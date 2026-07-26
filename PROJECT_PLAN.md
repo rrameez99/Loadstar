@@ -1,6 +1,10 @@
-# Training Load & Recovery App — Project Plan
+# Loadstar — Project Plan
 
-**Working title:** TBD (candidates: *Ledger*, *Basis*, *Forge*, *Loadout*)
+**Name:** Loadstar — a variant spelling of *lodestar*, the star you navigate by,
+containing *load*, the metric the whole app is built on. Guidance and training load in
+one word. The conventional spelling is heavily used on the App Store (a goal tracker, an
+LMS, a movie app), while nothing there is named Loadstar.
+
 **Owner:** Rameez Rahaman
 **Started:** July 2026
 
