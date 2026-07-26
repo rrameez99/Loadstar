@@ -1,0 +1,52 @@
+# --- Personal files: never commit these ---
+# The resume contains a phone number and email address. If this repo is ever
+# public, that becomes scrapeable. Keeping it ignored rather than deleted so it
+# stays in the folder locally.
+*.pdf
+Rameez_Rahaman_Resume.pdf
+
+# --- Xcode ---
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode project user-specific settings. The shared scheme files ARE committed
+# (that's xcshareddata), only per-user state is ignored.
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+*.xcodeproj/project.xcworkspace/*
+!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+*.xcworkspace/xcuserdata/
+
+# --- Swift Package Manager ---
+.build/
+.swiftpm/
+Package.resolved
+
+# --- CocoaPods / Carthage (not used, but harmless to guard against) ---
+Pods/
+Carthage/Build/
+
+# --- Secrets ---
+# Any API keys or credentials go in a file matching these patterns, never inline.
+Secrets.swift
+Secrets.plist
+*.env
+.env.local
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
