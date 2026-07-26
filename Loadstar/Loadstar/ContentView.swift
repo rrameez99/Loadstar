@@ -15,8 +15,8 @@ struct ContentView: View {
             TodayView()
                 .tabItem { Label("Today", systemImage: "gauge.with.dots.needle.33percent") }
 
-            LogSessionView()
-                .tabItem { Label("Log", systemImage: "plus.circle.fill") }
+            WorkoutsView()
+                .tabItem { Label("Workouts", systemImage: "figure.strengthtraining.traditional") }
 
             TrendsView()
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }

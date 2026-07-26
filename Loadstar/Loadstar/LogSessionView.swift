@@ -2,140 +2,12 @@
 //  LogSessionView.swift
 //  Loadstar
 //
-//  The screen that has to beat typing into Apple Notes. Design constraint: logging
-//  a set should be two taps from opening the app, with the numbers already filled
-//  in from what the progression engine expects.
+//  Shared logging components used by both today's session and any past session
+//  opened from history. The session-browsing shell lives in WorkoutsView.
 //
 
 import SwiftUI
 import SwiftData
-
-struct LogSessionView: View {
-    @Environment(\.modelContext) private var context
-
-    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-    @Query private var allSets: [SetEntry]
-
-    @State private var pickingExercise = false
-    @State private var loggingFor: Exercise?
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if let session = todaysSession, !session.sets.isEmpty {
-                    sessionList(session)
-                } else {
-                    emptyState
-                }
-            }
-            .navigationTitle("Today's Session")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        pickingExercise = true
-                    } label: {
-                        Label("Add Exercise", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $pickingExercise) {
-                ExercisePickerView { exercise in
-                    pickingExercise = false
-                    loggingFor = exercise
-                }
-            }
-            // `item:` presents the sheet whenever the bound optional becomes non-nil,
-            // and passes the unwrapped value in. Cleaner than juggling a separate
-            // Bool alongside the selection.
-            .sheet(item: $loggingFor) { exercise in
-                LogSetsView(exercise: exercise, session: sessionForToday(), history: allSets)
-            }
-        }
-    }
-
-    // MARK: Subviews
-
-    private var emptyState: some View {
-        ContentUnavailableView {
-            Label("Nothing logged today", systemImage: "dumbbell")
-        } description: {
-            Text("Add an exercise to start your session.")
-        } actions: {
-            Button("Add Exercise") { pickingExercise = true }
-                .buttonStyle(.borderedProminent)
-        }
-    }
-
-    private func sessionList(_ session: WorkoutSession) -> some View {
-        List {
-            ForEach(exerciseGroups(in: session), id: \.exerciseName) { group in
-                Section {
-                    ForEach(Array(group.sets.enumerated()), id: \.element.id) { index, entry in
-                        SetRow(entry: entry, index: index + 1)
-                    }
-                    .onDelete { offsets in
-                        for index in offsets {
-                            context.delete(group.sets[index])
-                        }
-                    }
-                } header: {
-                    Text(group.exerciseName)
-                } footer: {
-                    Text("\(formatted(group.volume)) kg total volume")
-                }
-            }
-
-            Section {
-                LabeledContent("Session volume", value: "\(formatted(session.totalVolumeLoad)) kg")
-                    .font(.body.weight(.semibold))
-            }
-        }
-    }
-
-    // MARK: Data helpers
-
-    private var todaysSession: WorkoutSession? {
-        let today = Calendar.current.startOfDay(for: Date())
-        return sessions.first { Calendar.current.startOfDay(for: $0.date) == today }
-    }
-
-    /// Returns today's session, creating one if this is the first set of the day.
-    private func sessionForToday() -> WorkoutSession {
-        if let existing = todaysSession { return existing }
-        let session = WorkoutSession(date: Date())
-        context.insert(session)
-        return session
-    }
-
-    private struct ExerciseGroup {
-        let exerciseName: String
-        let sets: [SetEntry]
-        var volume: Double { sets.reduce(0) { $0 + $1.volumeLoad } }
-    }
-
-    /// Groups a session's sets by exercise, preserving the order they were logged in
-    /// so the screen reads like the workout actually happened.
-    private func exerciseGroups(in session: WorkoutSession) -> [ExerciseGroup] {
-        let ordered = session.sets.sorted { $0.timestamp < $1.timestamp }
-        var names: [String] = []
-        var buckets: [String: [SetEntry]] = [:]
-
-        for entry in ordered {
-            let name = entry.exercise?.name ?? "Unknown"
-            if buckets[name] == nil {
-                names.append(name)
-                buckets[name] = []
-            }
-            buckets[name]?.append(entry)
-        }
-
-        return names.map { ExerciseGroup(exerciseName: $0, sets: buckets[$0] ?? []) }
-    }
-
-    private func formatted(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
-    }
-}
 
 // MARK: - Set row
 
@@ -310,8 +182,8 @@ struct LogSetsView: View {
                         .disabled(reps == 0)
                 }
 
-                // Per-side and bar weight matter for three movements out of thirty,
-                // so they're collapsed by default rather than cluttering every entry.
+                // Per-side and bar weight matter for a handful of movements, so
+                // they're collapsed by default rather than cluttering every entry.
                 // The label carries the current state so it's readable without
                 // expanding.
                 Section {
@@ -364,6 +236,13 @@ struct LogSetsView: View {
     }
 
     private func logSet() {
+        // Timestamp follows the session's date, not the wall clock — otherwise a
+        // set added to last Tuesday's session while editing would land on today
+        // and corrupt both days' load figures.
+        let timestamp = Calendar.current.isDateInToday(session.date)
+            ? Date()
+            : session.date.addingTimeInterval(Double(session.sets.count) * 60)
+
         let entry = SetEntry(
             weight: weight,
             reps: reps,
@@ -372,7 +251,8 @@ struct LogSetsView: View {
             barWeightKg: barWeightKg,
             isWarmup: isWarmup,
             exercise: exercise,
-            session: session
+            session: session,
+            timestamp: timestamp
         )
         context.insert(entry)
         loggedThisVisit.append(entry)
@@ -380,9 +260,5 @@ struct LogSetsView: View {
         // Warmup stays on only for the set you marked it on — forgetting to toggle
         // it back off would quietly corrupt the load numbers.
         isWarmup = false
-    }
-
-    private func formatted(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 }
