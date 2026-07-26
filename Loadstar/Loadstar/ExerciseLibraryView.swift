@@ -8,6 +8,7 @@
 
 import SwiftUI
 import SwiftData
+import Charts
 
 struct ExerciseLibraryView: View {
 
@@ -149,24 +150,46 @@ struct ExerciseDetailView: View {
                 }
             }
 
-            Section("Estimated 1RM") {
+            Section {
                 let series = ProgressionEngine.oneRepMaxSeries(for: exercise, history: allSets)
+
                 if series.isEmpty {
                     Text("No history yet.")
                         .foregroundStyle(.secondary)
                 } else {
-                    // Swift Charts goes here once the charting task lands. A plain
-                    // list is enough to verify the math is producing sane numbers.
-                    // Always kilograms — e1RM is a computed comparison figure, and
-                    // showing it in whichever unit that day happened to use would
-                    // defeat the point of normalizing.
+                    Chart(series, id: \.date) { point in
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value("e1RM", point.estimate)
+                        )
+                        .foregroundStyle(Color.accentColor)
+
+                        PointMark(
+                            x: .value("Date", point.date),
+                            y: .value("e1RM", point.estimate)
+                        )
+                        .foregroundStyle(Color.accentColor)
+                    }
+                    .frame(height: 180)
+                    .chartYScale(domain: .automatic(includesZero: false))
+                    .chartYAxisLabel("kg")
+                    .padding(.vertical, 8)
+
                     ForEach(series.reversed(), id: \.date) { point in
                         LabeledContent(
                             point.date.formatted(date: .abbreviated, time: .omitted),
                             value: "\(formatted(point.estimate)) kg"
                         )
+                        .font(.callout)
                     }
                 }
+            } header: {
+                Text("Estimated 1RM")
+            } footer: {
+                // Always kilograms — e1RM is a computed comparison figure, and
+                // showing it in whichever unit that day happened to use would
+                // defeat the point of normalizing.
+                Text("Best set of each session, converted to an estimated one-rep max and always shown in kg so sessions logged in different units stay comparable.")
             }
         }
         .navigationTitle(exercise.name)
