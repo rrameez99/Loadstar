@@ -42,7 +42,9 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
     case quads
     case hamstrings
     case glutes
+    case adductors
     case calves
+    case tibialis
     case core
 
     var id: String { rawValue }
@@ -59,7 +61,9 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
         case .quads:      return "Quads"
         case .hamstrings: return "Hamstrings"
         case .glutes:     return "Glutes"
+        case .adductors:  return "Adductors"
         case .calves:     return "Calves"
+        case .tibialis:   return "Tibialis"
         case .core:       return "Core"
         }
     }
@@ -69,8 +73,28 @@ enum MuscleGroup: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .chest, .back, .shoulders, .biceps, .triceps, .forearms:
             return true
-        case .quads, .hamstrings, .glutes, .calves, .core:
+        case .quads, .hamstrings, .glutes, .adductors, .calves, .tibialis, .core:
             return false
+        }
+    }
+}
+
+/// Weight units. Non-negotiable for this app: the training log spans gyms in the US
+/// and Denmark, so the same exercise legitimately appears in pounds one week and
+/// kilograms the next. Storing a bare number would make every cross-gym comparison
+/// silently wrong — 42.5 lb to 22.5 kg reads as a 47% drop and is actually a 17% gain.
+enum WeightUnit: String, Codable, CaseIterable, Identifiable {
+    case pounds = "lb"
+    case kilograms = "kg"
+
+    var id: String { rawValue }
+    var displayName: String { rawValue }
+
+    /// Canonical storage is kilograms. Everything comparable is computed from this.
+    var toKilograms: Double {
+        switch self {
+        case .kilograms: return 1.0
+        case .pounds:    return 0.45359237
         }
     }
 }
@@ -95,6 +119,15 @@ enum Equipment: String, Codable, CaseIterable, Identifiable {
         case .bodyweight: return "Bodyweight"
         case .kettlebell: return "Kettlebell"
         case .other:      return "Other"
+        }
+    }
+
+    /// Weight of the empty implement in kilograms. Only barbells carry one; a
+    /// machine's stack number already includes everything being lifted.
+    var defaultBarWeightKg: Double {
+        switch self {
+        case .barbell: return 20.0   // standard Olympic bar
+        default:       return 0.0
         }
     }
 
@@ -145,6 +178,19 @@ final class Exercise {
     /// Typical working set count. Only a UI prefill — not enforced anywhere.
     var defaultSetCount: Int = 3
 
+    /// Unit this movement is usually logged in, used to prefill the entry field.
+    /// Per-exercise rather than global, so a gym move doesn't require editing
+    /// every entry by hand.
+    var defaultUnit: WeightUnit = WeightUnit.kilograms
+
+    /// Whether this movement is normally recorded per side — true for dumbbells
+    /// and plate-loaded machines.
+    var defaultIsPerSide: Bool = false
+
+    /// Bar weight in kilograms used to prefill new sets. 20 kg for an Olympic
+    /// barbell, ~7.5 kg for an EZ-curl bar, 0 for machines and dumbbells.
+    var defaultBarWeightKg: Double = 0
+
     var notes: String = ""
     var createdAt: Date = Date()
 
@@ -164,6 +210,9 @@ final class Exercise {
         targetRepMax: Int = 12,
         weightIncrement: Double? = nil,
         defaultSetCount: Int = 3,
+        defaultUnit: WeightUnit = .kilograms,
+        defaultIsPerSide: Bool = false,
+        defaultBarWeightKg: Double? = nil,
         notes: String = ""
     ) {
         self.name = name
@@ -172,6 +221,9 @@ final class Exercise {
         self.equipment = equipment
         self.targetRepMin = targetRepMin
         self.targetRepMax = targetRepMax
+        self.defaultUnit = defaultUnit
+        self.defaultIsPerSide = defaultIsPerSide
+        self.defaultBarWeightKg = defaultBarWeightKg ?? equipment.defaultBarWeightKg
         // `??` is the nil-coalescing operator: use the left side unless it's nil,
         // in which case fall back to the right. Lets the caller override the
         // equipment-derived default without having to know it.
@@ -248,8 +300,30 @@ final class WorkoutSession {
 
 @Model
 final class SetEntry {
+    /// The number as written in the log — 22.5, not its kilogram equivalent. Always
+    /// interpret alongside `unit` and `isPerSide`.
     var weight: Double = 0
     var reps: Int = 0
+
+    /// Unit this set was recorded in. Stored per set rather than as a global
+    /// preference, because a single training history can legitimately span both.
+    var unit: WeightUnit = WeightUnit.pounds
+
+    /// True when `weight` describes one side rather than the total — two 20 lb
+    /// dumbbells, or a leg press loaded with 70 lb per side. Without this, every
+    /// dumbbell movement gets counted at half its real volume.
+    var isPerSide: Bool = false
+
+    /// Weight of the empty bar in kilograms, added on top of the plates.
+    ///
+    /// A standard Olympic bar is 20 kg, an EZ-curl bar around 7.5 kg, and machines
+    /// are zero. This matters enormously at the low end: 25 kg of plates per side
+    /// on a 20 kg bar is 70 kg total, not 25 — a nearly 3× error that would make
+    /// every squat number meaningless.
+    ///
+    /// Stored per set rather than read from the Exercise, so that changing an
+    /// exercise's bar later doesn't silently rewrite months of history.
+    var barWeightKg: Double = 0
 
     /// Rate of Perceived Exertion, 1–10, where 10 is failure. Optional because
     /// it's genuinely tedious to log every set and the app shouldn't demand it.
@@ -270,6 +344,9 @@ final class SetEntry {
     init(
         weight: Double,
         reps: Int,
+        unit: WeightUnit = .pounds,
+        isPerSide: Bool = false,
+        barWeightKg: Double = 0,
         rpe: Double? = nil,
         isWarmup: Bool = false,
         exercise: Exercise? = nil,
@@ -278,6 +355,9 @@ final class SetEntry {
     ) {
         self.weight = weight
         self.reps = reps
+        self.unit = unit
+        self.isPerSide = isPerSide
+        self.barWeightKg = barWeightKg
         self.rpe = rpe
         self.isWarmup = isWarmup
         self.exercise = exercise
@@ -285,12 +365,23 @@ final class SetEntry {
         self.timestamp = timestamp
     }
 
-    /// Mechanical work for this set.
-    var volumeLoad: Double {
-        weight * Double(reps)
+    /// Total load actually moved, normalized to kilograms.
+    ///
+    ///     total = (weight × unit) × (per side ? 2 : 1) + bar
+    ///
+    /// This is the only weight figure that should ever feed a calculation or a
+    /// chart. `weight` alone is a display value and is meaningless without its unit.
+    var totalWeightKg: Double {
+        let plates = weight * unit.toKilograms
+        return (isPerSide ? plates * 2 : plates) + barWeightKg
     }
 
-    /// Estimated one-rep max via the Epley formula:
+    /// Mechanical work for this set, in kilogram-reps.
+    var volumeLoad: Double {
+        totalWeightKg * Double(reps)
+    }
+
+    /// Estimated one-rep max in kilograms, via the Epley formula:
     ///
     ///     e1RM = weight × (1 + reps / 30)
     ///
@@ -298,8 +389,39 @@ final class SetEntry {
     /// that, so sets above 12 reps return nil rather than a number that would
     /// pollute the strength-progression chart with noise.
     var estimatedOneRepMax: Double? {
-        guard reps > 0, reps <= 12, weight > 0 else { return nil }
-        return weight * (1.0 + Double(reps) / 30.0)
+        guard reps > 0, reps <= 12, totalWeightKg > 0 else { return nil }
+        return totalWeightKg * (1.0 + Double(reps) / 30.0)
+    }
+
+    /// The set as it would be written in a log: "22.5 kg × 6" or "20 lb each × 10".
+    var displayDescription: String {
+        let number = weight == weight.rounded()
+            ? String(Int(weight))
+            : String(format: "%.1f", weight)
+        let side = isPerSide ? " each" : ""
+        return "\(number) \(unit.displayName)\(side) × \(reps)"
+    }
+
+    /// Expanded form showing what the total actually works out to, for verifying
+    /// that per-side and bar weight are set correctly: "25 kg each + 20 kg bar = 70 kg".
+    var loadBreakdown: String {
+        guard isPerSide || barWeightKg > 0 else { return "" }
+
+        var parts: [String] = []
+        let plates = weight * unit.toKilograms
+        if isPerSide {
+            parts.append("\(fmt(plates)) × 2")
+        } else {
+            parts.append("\(fmt(plates))")
+        }
+        if barWeightKg > 0 {
+            parts.append("+ \(fmt(barWeightKg)) kg bar")
+        }
+        return parts.joined(separator: " ") + " = \(fmt(totalWeightKg)) kg"
+    }
+
+    private func fmt(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 }
 

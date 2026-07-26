@@ -25,6 +25,20 @@ struct ProgressionRecommendation {
     let setCount: Int
     let rationale: Rationale
 
+    /// Unit the prescription is expressed in — carried through from the last
+    /// session so the number matches what's written on the machine.
+    let unit: WeightUnit
+
+    /// Whether `targetWeight` is per side.
+    let isPerSide: Bool
+
+    var displayWeight: String {
+        let number = targetWeight == targetWeight.rounded()
+            ? String(Int(targetWeight))
+            : String(format: "%.1f", targetWeight)
+        return "\(number) \(unit.displayName)\(isPerSide ? " each" : "")"
+    }
+
     /// Why this recommendation was made. Surfacing this is the whole point —
     /// the app should never hand you a number without saying where it came from.
     enum Rationale {
@@ -46,7 +60,7 @@ struct ProgressionRecommendation {
             case .firstTime:
                 return "First time logging this — pick a weight you can control."
             case .earnedWeightIncrease(let previous):
-                return "Cleared the rep target at \(Self.format(previous)) lb. Weight goes up."
+                return "Cleared the rep target at \(Self.format(previous)). Weight goes up."
             case .addReps(let current, let target):
                 return "At \(current) reps, working toward \(target) before adding weight."
             case .repeatWeight(let reason):
@@ -67,9 +81,16 @@ struct ProgressionRecommendation {
 struct ExerciseSnapshot {
     let date: Date
     let workingSets: [SetEntry]
-    let topWeight: Double
+
+    /// The heaviest working set, chosen by normalized kilograms so the comparison
+    /// survives a gym that logs in different units.
+    let topSet: SetEntry
+
     let bestEstimatedOneRepMax: Double?
     let totalVolume: Double
+
+    /// Raw display weight of the top set — the number as written, not normalized.
+    var topWeight: Double { topSet.weight }
 }
 
 // MARK: - Engine
@@ -96,14 +117,21 @@ enum ProgressionEngine {
                 targetWeight: 0,
                 targetReps: exercise.targetRepMin,
                 setCount: exercise.defaultSetCount,
-                rationale: .firstTime
+                rationale: .firstTime,
+                unit: exercise.defaultUnit,
+                isPerSide: exercise.defaultIsPerSide
             )
         }
 
+        let unit = last.topSet.unit
+        let isPerSide = last.topSet.isPerSide
+
         // Only sets at the heaviest weight used last session count toward
         // progression. If you did 3×8 at 135 and then a back-off set at 95, the
-        // back-off set shouldn't drag the assessment down.
-        let topSets = last.workingSets.filter { $0.weight == last.topWeight }
+        // back-off set shouldn't drag the assessment down. Compared in normalized
+        // kilograms so a unit change mid-history doesn't split the group.
+        let topKg = last.topSet.totalWeightKg
+        let topSets = last.workingSets.filter { abs($0.totalWeightKg - topKg) < 0.001 }
 
         guard !topSets.isEmpty else {
             return ProgressionRecommendation(
@@ -111,7 +139,9 @@ enum ProgressionEngine {
                 targetWeight: last.topWeight,
                 targetReps: exercise.targetRepMin,
                 setCount: exercise.defaultSetCount,
-                rationale: .repeatWeight(reason: "Couldn't read last session cleanly — repeating.")
+                rationale: .repeatWeight(reason: "Couldn't read last session cleanly — repeating."),
+                unit: unit,
+                isPerSide: isPerSide
             )
         }
 
@@ -128,7 +158,9 @@ enum ProgressionEngine {
                 targetWeight: next,
                 targetReps: exercise.targetRepMin,
                 setCount: exercise.defaultSetCount,
-                rationale: .earnedWeightIncrease(previousWeight: last.topWeight)
+                rationale: .earnedWeightIncrease(previousWeight: last.topWeight),
+                unit: unit,
+                isPerSide: isPerSide
             )
         }
 
@@ -139,7 +171,9 @@ enum ProgressionEngine {
             targetWeight: last.topWeight,
             targetReps: nextRepTarget,
             setCount: exercise.defaultSetCount,
-            rationale: .addReps(currentBest: minRepsAcrossTopSets, target: exercise.targetRepMax)
+            rationale: .addReps(currentBest: minRepsAcrossTopSets, target: exercise.targetRepMax),
+            unit: unit,
+            isPerSide: isPerSide
         )
     }
 
@@ -157,13 +191,13 @@ enum ProgressionEngine {
 
         guard let mostRecentDay = byDay.keys.max(),
               let sets = byDay[mostRecentDay],
-              let topWeight = sets.map(\.weight).max()
+              let topSet = sets.max(by: { $0.totalWeightKg < $1.totalWeightKg })
         else { return nil }
 
         return ExerciseSnapshot(
             date: mostRecentDay,
             workingSets: sets,
-            topWeight: topWeight,
+            topSet: topSet,
             bestEstimatedOneRepMax: sets.compactMap(\.estimatedOneRepMax).max(),
             totalVolume: sets.reduce(0) { $0 + $1.volumeLoad }
         )
@@ -224,69 +258,117 @@ enum ProgressionEngine {
 
 // MARK: - Seed data
 //
-// A starter library so the first run isn't an empty screen demanding thirty
-// manual entries. Skewed toward compound movements on an upper/lower split, with
-// rep ranges set the conventional way: lower ranges for heavy compounds where the
-// limiting factor is force production, higher for isolation work.
+// Derived from an actual Apple Notes training log spanning April–July 2026 rather
+// than a generic template, so rep ranges reflect how each movement is really
+// trained: squats and presses live at 5–7, machine and isolation work at 10–12,
+// forearms well above that.
+//
+// Defaults are kilograms and, where relevant, per-side — matching the current gym.
+// Both are per-exercise, so a gym change never requires a data migration.
 
 extension Exercise {
     static func seedLibrary() -> [Exercise] {
         [
-            // --- Upper: push ---
-            Exercise(name: "Bench Press", primaryMuscle: .chest,
-                     secondaryMuscles: [.triceps, .shoulders], equipment: .barbell,
+            // --- Chest ---
+            Exercise(name: "Chest Press (Machine)", primaryMuscle: .chest,
+                     secondaryMuscles: [.triceps, .shoulders], equipment: .machine,
                      targetRepMin: 5, targetRepMax: 8),
+            Exercise(name: "Incline Chest Press (Machine)", primaryMuscle: .chest,
+                     secondaryMuscles: [.shoulders, .triceps], equipment: .machine,
+                     targetRepMin: 5, targetRepMax: 8),
+            // Dumbbells are inherently per side: the logged number is one bell,
+            // and both hands are working.
             Exercise(name: "Incline Dumbbell Press", primaryMuscle: .chest,
                      secondaryMuscles: [.shoulders, .triceps], equipment: .dumbbell,
-                     targetRepMin: 8, targetRepMax: 12),
-            Exercise(name: "Overhead Press", primaryMuscle: .shoulders,
-                     secondaryMuscles: [.triceps], equipment: .barbell,
-                     targetRepMin: 5, targetRepMax: 8),
-            Exercise(name: "Lateral Raise", primaryMuscle: .shoulders,
-                     equipment: .dumbbell, targetRepMin: 12, targetRepMax: 20),
-            Exercise(name: "Triceps Pushdown", primaryMuscle: .triceps,
-                     equipment: .cable, targetRepMin: 10, targetRepMax: 15),
+                     targetRepMin: 8, targetRepMax: 12, defaultIsPerSide: true),
+            // One of only three movements historically logged per side.
+            Exercise(name: "Bench Press (Barbell)", primaryMuscle: .chest,
+                     secondaryMuscles: [.triceps, .shoulders], equipment: .barbell,
+                     targetRepMin: 4, targetRepMax: 6, defaultIsPerSide: true),
+            Exercise(name: "Pec Deck", primaryMuscle: .chest,
+                     equipment: .machine, targetRepMin: 8, targetRepMax: 12),
 
-            // --- Upper: pull ---
-            // The two back movements that rotate between sessions.
+            // --- Back ---
+            // Three distinct machines that all got written down as "row back."
+            Exercise(name: "Chest-Supported Row", primaryMuscle: .back,
+                     secondaryMuscles: [.biceps], equipment: .machine,
+                     targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Seated Row", primaryMuscle: .back,
+                     secondaryMuscles: [.biceps], equipment: .machine,
+                     targetRepMin: 10, targetRepMax: 12),
             Exercise(name: "Lat Pulldown", primaryMuscle: .back,
                      secondaryMuscles: [.biceps], equipment: .cable,
                      targetRepMin: 8, targetRepMax: 12),
-            Exercise(name: "Barbell Row", primaryMuscle: .back,
-                     secondaryMuscles: [.biceps], equipment: .barbell,
-                     targetRepMin: 6, targetRepMax: 10),
-            Exercise(name: "Seated Cable Row", primaryMuscle: .back,
+            Exercise(name: "Lat Pulldown (Single Arm)", primaryMuscle: .back,
                      secondaryMuscles: [.biceps], equipment: .cable,
                      targetRepMin: 8, targetRepMax: 12),
-            Exercise(name: "Pull-Up", primaryMuscle: .back,
-                     secondaryMuscles: [.biceps], equipment: .bodyweight,
-                     targetRepMin: 5, targetRepMax: 12),
-            Exercise(name: "Barbell Curl", primaryMuscle: .biceps,
-                     equipment: .barbell, targetRepMin: 8, targetRepMax: 12),
 
-            // --- Lower ---
-            Exercise(name: "Back Squat", primaryMuscle: .quads,
+            // --- Shoulders ---
+            Exercise(name: "Shoulder Press (Dumbbell)", primaryMuscle: .shoulders,
+                     secondaryMuscles: [.triceps], equipment: .dumbbell,
+                     targetRepMin: 8, targetRepMax: 12, defaultIsPerSide: true),
+            Exercise(name: "Shoulder Press (Machine)", primaryMuscle: .shoulders,
+                     secondaryMuscles: [.triceps], equipment: .machine,
+                     targetRepMin: 8, targetRepMax: 12),
+            Exercise(name: "Lateral Raise (Dumbbell)", primaryMuscle: .shoulders,
+                     equipment: .dumbbell, targetRepMin: 10, targetRepMax: 12,
+                     defaultIsPerSide: true),
+            Exercise(name: "Lateral Raise (Cable)", primaryMuscle: .shoulders,
+                     equipment: .cable, targetRepMin: 8, targetRepMax: 12),
+
+            // --- Arms ---
+            Exercise(name: "Hammer Curl", primaryMuscle: .biceps,
+                     secondaryMuscles: [.forearms], equipment: .cable,
+                     targetRepMin: 8, targetRepMax: 12),
+            Exercise(name: "Preacher Curl", primaryMuscle: .biceps,
+                     equipment: .machine, targetRepMin: 8, targetRepMax: 12),
+            // "Preacher curls rod 5kgs each" — an EZ-curl bar, roughly 7.5 kg empty.
+            Exercise(name: "Barbell Curl", primaryMuscle: .biceps,
+                     equipment: .barbell, targetRepMin: 8, targetRepMax: 12,
+                     defaultIsPerSide: true, defaultBarWeightKg: 7.5),
+            Exercise(name: "Overhead Triceps Extension", primaryMuscle: .triceps,
+                     equipment: .cable, targetRepMin: 8, targetRepMax: 12),
+            Exercise(name: "Triceps Extension", primaryMuscle: .triceps,
+                     equipment: .cable, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Wrist Curl", primaryMuscle: .forearms,
+                     equipment: .barbell, targetRepMin: 15, targetRepMax: 20),
+            Exercise(name: "Reverse Wrist Curl", primaryMuscle: .forearms,
+                     equipment: .barbell, targetRepMin: 10, targetRepMax: 15),
+
+            // --- Legs ---
+            // Squat and RDL are the other two logged per side, on a 20 kg bar.
+            Exercise(name: "Squat", primaryMuscle: .quads,
                      secondaryMuscles: [.glutes, .hamstrings], equipment: .barbell,
-                     targetRepMin: 5, targetRepMax: 8),
+                     targetRepMin: 5, targetRepMax: 7, defaultIsPerSide: true),
             Exercise(name: "Romanian Deadlift", primaryMuscle: .hamstrings,
                      secondaryMuscles: [.glutes, .back], equipment: .barbell,
-                     targetRepMin: 6, targetRepMax: 10),
-            Exercise(name: "Deadlift", primaryMuscle: .back,
-                     secondaryMuscles: [.hamstrings, .glutes], equipment: .barbell,
-                     targetRepMin: 3, targetRepMax: 6),
+                     targetRepMin: 5, targetRepMax: 7, defaultIsPerSide: true),
             Exercise(name: "Leg Press", primaryMuscle: .quads,
                      secondaryMuscles: [.glutes], equipment: .machine,
-                     targetRepMin: 10, targetRepMax: 15),
-            Exercise(name: "Leg Curl", primaryMuscle: .hamstrings,
-                     equipment: .machine, targetRepMin: 10, targetRepMax: 15),
-            Exercise(name: "Calf Raise", primaryMuscle: .calves,
-                     equipment: .machine, targetRepMin: 12, targetRepMax: 20),
+                     targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Hack Squat", primaryMuscle: .quads,
+                     secondaryMuscles: [.glutes], equipment: .machine,
+                     targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Leg Extension", primaryMuscle: .quads,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Hamstring Curl (Seated)", primaryMuscle: .hamstrings,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Hamstring Curl (Lying)", primaryMuscle: .hamstrings,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Hip Adduction", primaryMuscle: .adductors,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Hip Abduction", primaryMuscle: .glutes,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Standing Calf Raise", primaryMuscle: .calves,
+                     equipment: .machine, targetRepMin: 12, targetRepMax: 15),
+            Exercise(name: "Seated Calf Raise", primaryMuscle: .calves,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
+            Exercise(name: "Tibialis Raise", primaryMuscle: .tibialis,
+                     equipment: .machine, targetRepMin: 10, targetRepMax: 12),
 
             // --- Core ---
-            Exercise(name: "Hanging Leg Raise", primaryMuscle: .core,
-                     equipment: .bodyweight, targetRepMin: 8, targetRepMax: 15),
-            Exercise(name: "Cable Crunch", primaryMuscle: .core,
-                     equipment: .cable, targetRepMin: 10, targetRepMax: 15),
+            Exercise(name: "Hanging Knee Raise", primaryMuscle: .core,
+                     equipment: .bodyweight, targetRepMin: 6, targetRepMax: 12),
         ]
     }
 }
