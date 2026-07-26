@@ -310,6 +310,69 @@ final class HealthKitService {
         return summary
     }
 
+    // MARK: Workouts
+
+    /// Workouts recorded on a given day, with the average heart rate needed for
+    /// TRIMP.
+    ///
+    /// The average HR has to be fetched per workout with a separate query —
+    /// HKWorkout doesn't carry it as a property. `predicateForObjects(from:)`
+    /// pulls exactly the heart-rate samples HealthKit associates with that
+    /// workout, which is more reliable than filtering by time range (that would
+    /// sweep up stray samples from before and after).
+    func fetchWorkouts(for date: Date) async -> [WorkoutSummary] {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+
+        let predicate = HKQuery.predicateForSamples(withStart: dayStart, end: dayEnd, options: .strictStartDate)
+
+        let workouts: [HKWorkout] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKObjectType.workoutType(),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, results, _ in
+                continuation.resume(returning: (results as? [HKWorkout]) ?? [])
+            }
+            store.execute(query)
+        }
+
+        var summaries: [WorkoutSummary] = []
+
+        for workout in workouts {
+            let avgHR = await averageHeartRate(during: workout)
+            summaries.append(
+                WorkoutSummary(
+                    start: workout.startDate,
+                    duration: workout.duration,
+                    averageHeartRate: avgHR,
+                    activityName: workout.workoutActivityType.displayName
+                )
+            )
+        }
+
+        return summaries
+    }
+
+    private func averageHeartRate(during workout: HKWorkout) async -> Double? {
+        let type = HKQuantityType(.heartRate)
+        let predicate = HKQuery.predicateForObjects(from: workout)
+        let unit = HKUnit.count().unitDivided(by: .minute())
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .discreteAverage
+            ) { _, statistics, _ in
+                continuation.resume(returning: statistics?.averageQuantity()?.doubleValue(for: unit))
+            }
+            store.execute(query)
+        }
+    }
+
     // MARK: Sync
 
     /// Pulls the last `days` days into SwiftData, updating existing rows in place.
@@ -327,6 +390,20 @@ final class HealthKitService {
         isSyncing = true
         lastError = nil
         defer { isSyncing = false }
+
+        // Profile values needed for TRIMP. Read once rather than per day.
+        let defaults = UserDefaults.standard
+        let restingHR = Double(defaults.integer(forKey: ProfileKey.restingHR))
+        let maxHR = Double(defaults.integer(forKey: ProfileKey.maxHR))
+        let sex = BiologicalSexOption(
+            rawValue: defaults.string(forKey: ProfileKey.biologicalSex) ?? ""
+        ) ?? .unspecified
+        let coefficient = sex.trimpCoefficient
+
+        // Without a valid heart-rate reserve, TRIMP is meaningless — so fall back
+        // to conventional defaults rather than producing confidently wrong numbers.
+        let effectiveRestingHR = restingHR > 30 ? restingHR : 60
+        let effectiveMaxHR = maxHR > effectiveRestingHR ? maxHR : 190
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -369,10 +446,51 @@ final class HealthKitService {
             row.remSleepMinutes = snapshot.remSleepMinutes
             row.coreSleepMinutes = snapshot.coreSleepMinutes
             row.awakeMinutes = snapshot.awakeMinutes
+
+            // Cardiovascular load is computed here, at ingest, because it needs
+            // per-workout heart-rate queries that would be far too slow to run
+            // inside a view body.
+            let workouts = await fetchWorkouts(for: snapshot.date)
+            row.cardiovascularLoad = StrainEngine.cardiovascularLoad(
+                workouts: workouts,
+                restingHR: effectiveRestingHR,
+                maxHR: effectiveMaxHR,
+                coefficient: coefficient
+            )
+
             row.lastComputed = Date()
         }
 
         try? context.save()
         lastSyncDate = Date()
+    }
+}
+
+// MARK: - Activity type names
+
+extension HKWorkoutActivityType {
+    /// HealthKit exposes these only as opaque integers, so the common ones get
+    /// readable names and everything else falls back gracefully.
+    var displayName: String {
+        switch self {
+        case .running:               return "Running"
+        case .walking:               return "Walking"
+        case .cycling:               return "Cycling"
+        case .traditionalStrengthTraining: return "Strength Training"
+        case .functionalStrengthTraining:  return "Functional Strength"
+        case .highIntensityIntervalTraining: return "HIIT"
+        case .swimming:              return "Swimming"
+        case .rowing:                return "Rowing"
+        case .elliptical:            return "Elliptical"
+        case .stairClimbing:         return "Stair Climbing"
+        case .yoga:                  return "Yoga"
+        case .coreTraining:          return "Core Training"
+        case .mixedCardio:           return "Mixed Cardio"
+        case .soccer:                return "Soccer"
+        case .basketball:            return "Basketball"
+        case .tennis:                return "Tennis"
+        case .hiking:                return "Hiking"
+        default:                     return "Workout"
+        }
     }
 }
