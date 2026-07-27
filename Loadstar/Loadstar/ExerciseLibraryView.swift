@@ -47,7 +47,7 @@ struct ExerciseLibraryView: View {
                 }
             }
             .sheet(isPresented: $isAddingExercise) {
-                AddExerciseView()
+                ExerciseEditorView()
             }
         }
     }
@@ -95,6 +95,8 @@ struct ExerciseRow: View {
 
 struct ExerciseDetailView: View {
     let exercise: Exercise
+
+    @State private var isEditing = false
 
     /// Pulling every set and filtering in Swift is fine at personal-log scale —
     /// a few thousand rows at most. If this ever gets slow, the fix is a predicate
@@ -145,8 +147,16 @@ struct ExerciseDetailView: View {
                 LabeledContent("Equipment", value: exercise.equipment.displayName)
                 LabeledContent("Rep range", value: "\(exercise.targetRepMin)–\(exercise.targetRepMax)")
                 LabeledContent("Increment", value: "\(formatted(exercise.weightIncrement)) \(exercise.defaultUnit.displayName)")
-                if exercise.defaultIsPerSide {
-                    LabeledContent("Loading", value: "Per side")
+                LabeledContent("Loading", value: loadingSummary)
+                LabeledContent(
+                    "Rest",
+                    value: "\(exercise.restSeconds / 60):\(String(format: "%02d", exercise.restSeconds % 60))"
+                )
+            }
+
+            if !exercise.notes.isEmpty {
+                Section("Notes") {
+                    Text(exercise.notes)
                 }
             }
 
@@ -194,73 +204,26 @@ struct ExerciseDetailView: View {
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") { isEditing = true }
+            }
+        }
+        .sheet(isPresented: $isEditing) {
+            ExerciseEditorView(existing: exercise)
+        }
+    }
+
+    private var loadingSummary: String {
+        switch (exercise.defaultIsPerSide, exercise.defaultBarWeightKg > 0) {
+        case (true, true):   return "Per side + \(formatted(exercise.defaultBarWeightKg)) kg bar"
+        case (true, false):  return "Per side"
+        case (false, true):  return "\(formatted(exercise.defaultBarWeightKg)) kg bar"
+        case (false, false): return "Total"
+        }
     }
 
     private func formatted(_ value: Double) -> String {
         value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
-    }
-}
-
-// MARK: - Add exercise
-
-struct AddExerciseView: View {
-    @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var name = ""
-    @State private var primaryMuscle: MuscleGroup = .chest
-    @State private var equipment: Equipment = .barbell
-    @State private var repMin = 8
-    @State private var repMax = 12
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Exercise name", text: $name)
-                }
-
-                Section("Classification") {
-                    Picker("Primary muscle", selection: $primaryMuscle) {
-                        ForEach(MuscleGroup.allCases) { muscle in
-                            Text(muscle.displayName).tag(muscle)
-                        }
-                    }
-                    Picker("Equipment", selection: $equipment) {
-                        ForEach(Equipment.allCases) { item in
-                            Text(item.displayName).tag(item)
-                        }
-                    }
-                }
-
-                Section("Target rep range") {
-                    Stepper("Minimum: \(repMin)", value: $repMin, in: 1...30)
-                    Stepper("Maximum: \(repMax)", value: $repMax, in: 1...30)
-                }
-            }
-            .navigationTitle("New Exercise")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || repMin > repMax)
-                }
-            }
-        }
-    }
-
-    private func save() {
-        let exercise = Exercise(
-            name: name.trimmingCharacters(in: .whitespaces),
-            primaryMuscle: primaryMuscle,
-            equipment: equipment,
-            targetRepMin: repMin,
-            targetRepMax: repMax
-        )
-        context.insert(exercise)
-        dismiss()
     }
 }

@@ -1,9 +1,12 @@
 # --- Personal files: never commit these ---
-# The resume contains a phone number and email address. If this repo is ever
-# public, that becomes scrapeable. Keeping it ignored rather than deleted so it
-# stays in the folder locally.
+# The resume contains a phone number and a personal email address. This repo is
+# public, so committing it would put both in front of every scraper on GitHub —
+# and in the history permanently, even if deleted later.
 *.pdf
+*.docx
+*.doc
 Rameez_Rahaman_Resume.pdf
+Rameez_Rahaman_Resume.docx
 
 # --- Xcode ---
 xcuserdata/
