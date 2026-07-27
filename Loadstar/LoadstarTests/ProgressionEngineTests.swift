@@ -12,6 +12,7 @@
 
 import Testing
 import Foundation
+import SwiftData
 @testable import Loadstar
 
 @MainActor
@@ -142,6 +143,29 @@ struct ProgressionEngineTests {
         )
 
         #expect(isClose(recommendation.targetWeight, 60))
+    }
+
+    @Test("A bodyweight movement keeps adding reps rather than resetting")
+    func bodyweightProgressesOnRepsAlone() throws {
+        let context = try makeTestContext()
+        let raises = makeExercise(in: context, name: "Hanging Knee Raise",
+                                  primaryMuscle: .core, equipment: .bodyweight,
+                                  repRange: 6...12, increment: 0, sets: 3)
+
+        // Cleared the top of the range on every set.
+        makeSets(in: context, exercise: raises, on: TestDate.daysAgo(3),
+                 weight: 0, reps: [12, 12, 12])
+
+        let recommendation = ProgressionEngine.recommendation(
+            for: raises, history: fetchSets(context), before: TestDate.reference
+        )
+
+        // There's no weight to add, so the ceiling doesn't apply — 13, not a
+        // reset to 6, which would punish you for succeeding.
+        #expect(recommendation.targetReps == 13)
+        if case .earnedWeightIncrease = recommendation.rationale {
+            Issue.record("Bodyweight movements have no weight to increase")
+        }
     }
 
     @Test("A first-ever exercise asks for a starting weight")

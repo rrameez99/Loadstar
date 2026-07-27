@@ -152,7 +152,13 @@ enum ProgressionEngine {
         let clearedRepTarget = minRepsAcrossTopSets >= exercise.targetRepMax
         let hitEnoughSets = topSets.count >= exercise.defaultSetCount
 
-        if clearedRepTarget && hitEnoughSets {
+        // Bodyweight movements have no increment to add. Without this check they'd
+        // "earn" an increase of zero and get reset to the bottom of the rep range —
+        // sent backwards for succeeding. They progress on reps alone, so the range
+        // ceiling doesn't apply to them.
+        let canAddWeight = exercise.weightIncrement > 0
+
+        if clearedRepTarget && hitEnoughSets && canAddWeight {
             // Earned the increase. Round to something loadable on a real barbell.
             let raw = last.topWeight + exercise.weightIncrement
             let next = roundToLoadable(raw, increment: exercise.weightIncrement)
@@ -168,7 +174,10 @@ enum ProgressionEngine {
         }
 
         // Otherwise stay at this weight and try for one more rep than last time.
-        let nextRepTarget = min(minRepsAcrossTopSets + 1, exercise.targetRepMax)
+        // The rep ceiling only exists because clearing it earns weight; with no
+        // weight to add, reps climb indefinitely.
+        let repCeiling = canAddWeight ? exercise.targetRepMax : Int.max
+        let nextRepTarget = min(minRepsAcrossTopSets + 1, repCeiling)
         return ProgressionRecommendation(
             exercise: exercise,
             targetWeight: last.topWeight,

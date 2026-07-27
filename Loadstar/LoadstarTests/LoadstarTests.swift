@@ -38,8 +38,16 @@ struct LoadstarTests {
         for exercise in library {
             #expect(exercise.targetRepMin <= exercise.targetRepMax,
                     "\(exercise.name) has an inverted rep range")
-            #expect(exercise.weightIncrement > 0,
-                    "\(exercise.name) has no weight increment")
+            // Bodyweight movements legitimately have no increment — there's no
+            // external load to add. Everything else must have one, or double
+            // progression can never advance.
+            if exercise.equipment == .bodyweight {
+                #expect(exercise.weightIncrement == 0,
+                        "\(exercise.name) is bodyweight but has a weight increment")
+            } else {
+                #expect(exercise.weightIncrement > 0,
+                        "\(exercise.name) has no weight increment")
+            }
             #expect(exercise.restSeconds > 0,
                     "\(exercise.name) has no rest period")
             // A muscle counted as both primary and secondary is double-counted

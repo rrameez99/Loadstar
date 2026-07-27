@@ -116,6 +116,9 @@ struct ExerciseEditorView: View {
     @State private var draft: ExerciseDraft
     @State private var showingDeleteConfirmation = false
 
+    // Reading properties off a @Model is main-actor isolated, and a struct's
+    // init is nonisolated by default — so this has to be marked explicitly.
+    @MainActor
     init(existing: Exercise? = nil) {
         self.existing = existing
         _draft = State(initialValue: existing.map(ExerciseDraft.init(from:)) ?? ExerciseDraft())
