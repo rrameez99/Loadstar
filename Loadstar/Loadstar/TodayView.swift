@@ -485,7 +485,7 @@ struct ScoreDetailView: View {
             Section {
                 LabeledContent("Cardiovascular", value: String(format: "%.0f", strain.cardiovascularLoad))
                 LabeledContent("Mechanical", value: String(format: "%.0f", strain.mechanicalLoad))
-                LabeledContent("Volume lifted", value: "\(Int(strain.rawVolumeKg)) kg")
+                LabeledContent("Volume lifted", value: DisplayUnit.volume(strain.rawVolumeKg))
 
                 if let share = strain.mechanicalShare {
                     LabeledContent("Lifting share", value: "\(Int(share * 100))%")

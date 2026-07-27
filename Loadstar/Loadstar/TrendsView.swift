@@ -69,12 +69,12 @@ struct TrendsView: View {
                 Chart(weeklyVolume, id: \.weekStart) { week in
                     BarMark(
                         x: .value("Week", week.weekStart, unit: .weekOfYear),
-                        y: .value("Volume", week.volume)
+                        y: .value("Volume", DisplayUnit.value(week.volume))
                     )
                     .foregroundStyle(Color.accentColor)
                 }
                 .frame(height: 180)
-                .chartYAxisLabel("kg")
+                .chartYAxisLabel(DisplayUnit.symbol)
 
                 Text("Total mechanical work per week — weight × reps, summed across every working set.")
                     .font(.caption)
@@ -114,13 +114,13 @@ struct TrendsView: View {
             } else {
                 Chart(muscleVolume, id: \.muscle) { item in
                     BarMark(
-                        x: .value("Volume", item.volume),
+                        x: .value("Volume", DisplayUnit.value(item.volume)),
                         y: .value("Muscle", item.muscle.displayName)
                     )
                     .foregroundStyle(by: .value("Region", item.muscle.isUpperBody ? "Upper" : "Lower"))
                 }
                 .frame(height: CGFloat(muscleVolume.count) * 26 + 40)
-                .chartXAxisLabel("kg")
+                .chartXAxisLabel(DisplayUnit.symbol)
 
                 Text("Secondary muscles count at half credit. Because movements rotate between sessions, this is the honest answer to \"am I training my back enough\" — a single exercise's chart isn't.")
                     .font(.caption)

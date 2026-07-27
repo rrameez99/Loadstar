@@ -113,9 +113,9 @@ struct LogSetsView: View {
     /// as "Total" at a glance and only the unusual case invites a tap.
     private var loadingSummary: String {
         switch (isPerSide, barWeightKg > 0) {
-        case (true, true):   return "Per side + \(format(barWeightKg)) kg bar"
+        case (true, true):   return "Per side + \(DisplayUnit.weight(barWeightKg)) bar"
         case (true, false):  return "Per side"
-        case (false, true):  return "\(format(barWeightKg)) kg bar"
+        case (false, true):  return "\(DisplayUnit.weight(barWeightKg)) bar"
         case (false, false): return "Total"
         }
     }
@@ -125,7 +125,7 @@ struct LogSetsView: View {
         guard isPerSide || barWeightKg > 0, weight > 0 else { return "" }
         let plates = weight * unit.toKilograms
         let total = (isPerSide ? plates * 2 : plates) + barWeightKg
-        return "Total: \(format(total)) kg"
+        return "Total: \(DisplayUnit.weight(total))"
     }
 
     private func format(_ value: Double) -> String {
@@ -221,8 +221,8 @@ struct LogSetsView: View {
                         HStack {
                             Text("Bar weight")
                             Spacer()
-                            DecimalField(placeholder: "0", value: $barWeightKg)
-                            Text("kg").foregroundStyle(.secondary)
+                            DecimalField(placeholder: "0", value: $barWeightKg.inDisplayUnit())
+                            Text(DisplayUnit.symbol).foregroundStyle(.secondary)
                         }
                     } label: {
                         LabeledContent("Loading", value: loadingSummary)

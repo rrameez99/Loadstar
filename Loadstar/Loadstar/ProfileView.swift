@@ -30,17 +30,8 @@ enum ProfileKey {
     static let preferredUnit = "profile.preferredUnit"
 }
 
-/// The unit new sets default to, when there's no prior session to inherit from.
-///
-/// Deliberately a preference rather than a conversion: changing this affects what
-/// gets *entered* next, and never rewrites anything already logged. Your history
-/// stays exactly as you recorded it, in whichever gym you recorded it.
-enum PreferredUnitDefaults {
-    static var current: WeightUnit {
-        let raw = UserDefaults.standard.string(forKey: ProfileKey.preferredUnit)
-        return WeightUnit(rawValue: raw ?? "") ?? .kilograms
-    }
-}
+// PreferredUnitDefaults lives in Units.swift, alongside the conversion and
+// display rules it belongs with.
 
 enum BiologicalSexOption: String, CaseIterable, Identifiable {
     case male, female, unspecified
@@ -80,7 +71,7 @@ struct ProfileView: View {
     @AppStorage(ProfileKey.restingHR) private var restingHR = 0
     @AppStorage(ProfileKey.maxHR) private var maxHR = 0
     @AppStorage(ProfileKey.bodyMassKg) private var bodyMassKg = 0.0
-    @AppStorage(ProfileKey.preferredUnit) private var preferredUnitRaw = WeightUnit.kilograms.rawValue
+    @AppStorage(ProfileKey.preferredUnit) private var preferredUnitRaw = WeightUnit.pounds.rawValue
 
     @State private var health = HealthKitService.shared
     @State private var showingAuthError: String?
@@ -143,7 +134,7 @@ struct ProfileView: View {
                 } header: {
                     Text("Units")
                 } footer: {
-                    Text("Sets you log from now on default to this. Nothing already recorded changes — a session logged in kg stays in kg, and all comparisons are normalized behind the scenes regardless.")
+                    Text("New sets default to this, and totals, charts and estimated 1RMs are shown in it. Nothing already recorded changes — a session logged in kg stays logged in kg, and every comparison is normalised behind the scenes regardless of which gym you were in.")
                 }
 
                 Section {

@@ -170,25 +170,25 @@ struct ExerciseDetailView: View {
                     Chart(series, id: \.date) { point in
                         LineMark(
                             x: .value("Date", point.date),
-                            y: .value("e1RM", point.estimate)
+                            y: .value("e1RM", DisplayUnit.value(point.estimate))
                         )
                         .foregroundStyle(Color.accentColor)
 
                         PointMark(
                             x: .value("Date", point.date),
-                            y: .value("e1RM", point.estimate)
+                            y: .value("e1RM", DisplayUnit.value(point.estimate))
                         )
                         .foregroundStyle(Color.accentColor)
                     }
                     .frame(height: 180)
                     .chartYScale(domain: .automatic(includesZero: false))
-                    .chartYAxisLabel("kg")
+                    .chartYAxisLabel(DisplayUnit.symbol)
                     .padding(.vertical, 8)
 
                     ForEach(series.reversed(), id: \.date) { point in
                         LabeledContent(
                             point.date.formatted(date: .abbreviated, time: .omitted),
-                            value: "\(formatted(point.estimate)) kg"
+                            value: DisplayUnit.weight(point.estimate)
                         )
                         .font(.callout)
                     }
@@ -199,7 +199,7 @@ struct ExerciseDetailView: View {
                 // Always kilograms — e1RM is a computed comparison figure, and
                 // showing it in whichever unit that day happened to use would
                 // defeat the point of normalizing.
-                Text("Best set of each session, converted to an estimated one-rep max and always shown in kg so sessions logged in different units stay comparable.")
+                Text("Best set of each session, converted to an estimated one-rep max. Always shown in your preferred unit regardless of what each session was logged in, so the series stays comparable.")
             }
         }
         .navigationTitle(exercise.name)
@@ -216,9 +216,9 @@ struct ExerciseDetailView: View {
 
     private var loadingSummary: String {
         switch (exercise.defaultIsPerSide, exercise.defaultBarWeightKg > 0) {
-        case (true, true):   return "Per side + \(formatted(exercise.defaultBarWeightKg)) kg bar"
+        case (true, true):   return "Per side + \(DisplayUnit.weight(exercise.defaultBarWeightKg)) bar"
         case (true, false):  return "Per side"
-        case (false, true):  return "\(formatted(exercise.defaultBarWeightKg)) kg bar"
+        case (false, true):  return "\(DisplayUnit.weight(exercise.defaultBarWeightKg)) bar"
         case (false, false): return "Total"
         }
     }

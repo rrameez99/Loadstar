@@ -191,8 +191,8 @@ struct ExerciseEditorView: View {
                     HStack {
                         Text("Bar weight")
                         Spacer()
-                        DecimalField(placeholder: "0", value: $draft.defaultBarWeightKg)
-                        Text("kg").foregroundStyle(.secondary)
+                        DecimalField(placeholder: "0", value: $draft.defaultBarWeightKg.inDisplayUnit())
+                        Text(DisplayUnit.symbol).foregroundStyle(.secondary)
                     }
                 } header: {
                     Text("Loading")
@@ -272,11 +272,11 @@ struct ExerciseEditorView: View {
     private var loadingExplanation: String {
         switch (draft.defaultIsPerSide, draft.defaultBarWeightKg > 0) {
         case (true, true):
-            return "Entering 25 records 25 per side plus a \(formatted(draft.defaultBarWeightKg)) kg bar — \(formatted(25 * 2 * draft.defaultUnit.toKilograms + draft.defaultBarWeightKg)) kg total."
+            return "Entering 25 records 25 per side plus a \(DisplayUnit.weight(draft.defaultBarWeightKg)) bar — \(DisplayUnit.weight(25 * 2 * draft.defaultUnit.toKilograms + draft.defaultBarWeightKg)) total."
         case (true, false):
             return "Entering 25 records 25 per side, so 50 total. Right for dumbbells and plate-loaded machines."
         case (false, true):
-            return "A \(formatted(draft.defaultBarWeightKg)) kg bar is added to whatever you enter."
+            return "A \(DisplayUnit.weight(draft.defaultBarWeightKg)) bar is added to whatever you enter."
         case (false, false):
             return "The number you enter is the total lifted. Right for cable stacks and most machines."
         }

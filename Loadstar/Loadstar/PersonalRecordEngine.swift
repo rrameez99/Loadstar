@@ -58,13 +58,13 @@ struct PersonalRecord: Identifiable, Hashable {
     var headline: String {
         switch kind {
         case .estimatedOneRepMax:
-            return "New estimated 1RM — \(format(value)) kg"
+            return "New estimated 1RM — \(DisplayUnit.weight(value))"
         case .weight:
-            return "Heaviest ever — \(format(value)) kg"
+            return "Heaviest ever — \(DisplayUnit.weight(value))"
         case .repsAtWeight:
-            return "\(Int(value)) reps at \(format(previous ?? 0)) kg"
+            return "\(Int(value)) reps at \(DisplayUnit.weight(previous ?? 0))"
         case .sessionVolume:
-            return "Biggest session — \(Int(value)) kg"
+            return "Biggest session — \(DisplayUnit.volume(value))"
         }
     }
 

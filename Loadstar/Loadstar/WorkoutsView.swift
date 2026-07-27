@@ -268,7 +268,7 @@ struct SessionSummaryRow: View {
                 .foregroundStyle(showDate ? .secondary : .primary)
                 .lineLimit(2)
 
-            Text("\(session.workingSets.count) sets · \(Int(session.totalVolumeLoad)) kg")
+            Text("\(session.workingSets.count) sets · \(DisplayUnit.volume(session.totalVolumeLoad))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -373,12 +373,12 @@ struct SessionDetailView: View {
                 } header: {
                     Text(group.exerciseName)
                 } footer: {
-                    Text("\(Int(group.volume)) kg volume")
+                    Text("\(DisplayUnit.volume(group.volume)) volume")
                 }
             }
 
             Section {
-                LabeledContent("Session volume", value: "\(Int(session.totalVolumeLoad)) kg")
+                LabeledContent("Session volume", value: DisplayUnit.volume(session.totalVolumeLoad))
                     .font(.body.weight(.semibold))
                 LabeledContent("Working sets", value: "\(session.workingSets.count)")
             }
@@ -477,18 +477,15 @@ struct EditSetView: View {
                     HStack {
                         Text("Bar weight")
                         Spacer()
-                        TextField("0", value: $entry.barWeightKg, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 70)
-                        Text("kg").foregroundStyle(.secondary)
+                        DecimalField(placeholder: "0", value: $entry.barWeightKg.inDisplayUnit())
+                        Text(DisplayUnit.symbol).foregroundStyle(.secondary)
                     }
 
                     Toggle("Warmup set", isOn: $entry.isWarmup)
                 } header: {
                     Text("Loading")
                 } footer: {
-                    Text("Total: \(format(entry.totalWeightKg)) kg · volume \(Int(entry.volumeLoad)) kg")
+                    Text("Total: \(DisplayUnit.weight(entry.totalWeightKg)) · volume \(DisplayUnit.volume(entry.volumeLoad))")
                 }
 
                 Section {
