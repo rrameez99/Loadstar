@@ -91,7 +91,8 @@ struct ExercisePickerView: View {
 // MARK: - Logging sets
 
 struct LogSetsView: View {
-    let exercise: Exercise
+    /// `@Bindable` because rest length is edited here and stored on the exercise.
+    @Bindable var exercise: Exercise
     let session: WorkoutSession
     let history: [SetEntry]
 
@@ -105,6 +106,8 @@ struct LogSetsView: View {
     @State private var barWeightKg: Double = 0
     @State private var isWarmup = false
     @State private var loggedThisVisit: [SetEntry] = []
+    @State private var latestRecords: [PersonalRecord] = []
+    @State private var restEnabled = true
 
     /// Collapsed-state summary for the loading controls, so the common case reads
     /// as "Total" at a glance and only the unusual case invites a tap.
@@ -182,6 +185,34 @@ struct LogSetsView: View {
                         .disabled(reps == 0)
                 }
 
+                if !latestRecords.isEmpty {
+                    Section {
+                        PersonalRecordBadge(records: latestRecords)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                    }
+                }
+
+                Section {
+                    Toggle("Start rest timer after each set", isOn: $restEnabled)
+
+                    if restEnabled {
+                        Stepper(
+                            "Rest: \(exercise.restSeconds / 60):\(String(format: "%02d", exercise.restSeconds % 60))",
+                            value: Binding(
+                                get: { exercise.restSeconds },
+                                // Stored on the exercise, so adjusting it once
+                                // sticks for every future session of that movement.
+                                set: { exercise.restSeconds = $0 }
+                            ),
+                            in: 15...600,
+                            step: 15
+                        )
+                    }
+                } header: {
+                    Text("Rest")
+                }
+
                 // Per-side and bar weight matter for a handful of movements, so
                 // they're collapsed by default rather than cluttering every entry.
                 // The label carries the current state so it's readable without
@@ -222,6 +253,11 @@ struct LogSetsView: View {
                 }
             }
             .onAppear(perform: prefill)
+            .safeAreaInset(edge: .bottom) {
+                // Pinned above the keyboard and the form, so the countdown stays
+                // visible while you're entering the next set.
+                RestTimerBar()
+            }
         }
     }
 
@@ -256,6 +292,19 @@ struct LogSetsView: View {
         )
         context.insert(entry)
         loggedThisVisit.append(entry)
+
+        // Records are checked against everything logged before this set. The
+        // engine excludes the set itself, so it can't beat its own record.
+        latestRecords = PersonalRecordEngine.records(for: entry, history: history)
+
+        // Warmups don't earn a rest timer — you're not recovering from them.
+        if restEnabled && !isWarmup {
+            RestTimer.shared.start(
+                seconds: TimeInterval(exercise.restSeconds),
+                exerciseName: exercise.name
+            )
+            Task { await RestTimer.requestPermissionIfNeeded() }
+        }
 
         // Warmup stays on only for the set you marked it on — forgetting to toggle
         // it back off would quietly corrupt the load numbers.

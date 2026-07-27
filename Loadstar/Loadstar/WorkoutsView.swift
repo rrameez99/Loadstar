@@ -56,11 +56,15 @@ struct WorkoutsView: View {
     @ViewBuilder
     private var todaySection: some View {
         Section("Today") {
-            if let session = todaysSession, !session.sets.isEmpty {
+            if let session = todaysSession, !(session.sets.isEmpty && session.plannedExerciseNames.isEmpty) {
                 NavigationLink {
                     SessionDetailView(session: session)
                 } label: {
                     SessionSummaryRow(session: session, showDate: false)
+                }
+
+                if !session.plannedExerciseNames.isEmpty {
+                    PlanProgressRow(session: session)
                 }
             } else {
                 Button {
@@ -68,8 +72,63 @@ struct WorkoutsView: View {
                 } label: {
                     Label("Start logging", systemImage: "plus.circle")
                 }
+
+                // Training rotates through a handful of fixed days, so the fastest
+                // start is almost always "the same thing I did last time."
+                ForEach(repeatCandidates, id: \.persistentModelID) { candidate in
+                    Button {
+                        repeat(candidate)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Repeat \(candidate.date.formatted(.dateTime.weekday(.wide)))", systemImage: "arrow.counterclockwise")
+                            Text(exerciseNames(for: candidate))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
             }
         }
+    }
+
+    /// The two most recent distinct sessions, offered as repeat templates.
+    ///
+    /// Two rather than one because an upper/lower split means the session you
+    /// actually want is usually the one *before* last — the alternative.
+    private var repeatCandidates: [WorkoutSession] {
+        sessions
+            .filter { !Calendar.current.isDateInToday($0.date) && !$0.sets.isEmpty }
+            .prefix(2)
+            .map { $0 }
+    }
+
+    private func exerciseNames(for session: WorkoutSession) -> String {
+        var seen: [String] = []
+        for entry in session.sets.sorted(by: { $0.timestamp < $1.timestamp }) {
+            if let name = entry.exercise?.name, !seen.contains(name) {
+                seen.append(name)
+            }
+        }
+        return seen.joined(separator: ", ")
+    }
+
+    /// Copies the *plan* — which exercises, in what order — but never the sets.
+    ///
+    /// Copying sets would log work you haven't done, which is the one thing a
+    /// training log must never do. The progression engine fills in the numbers
+    /// when you get to each movement.
+    private func `repeat`(_ source: WorkoutSession) {
+        let session = sessionForToday()
+
+        var names: [String] = []
+        for entry in source.sets.sorted(by: { $0.timestamp < $1.timestamp }) {
+            if let name = entry.exercise?.name, !names.contains(name) {
+                names.append(name)
+            }
+        }
+
+        session.plannedExerciseNames = names
     }
 
     // MARK: - History
@@ -147,6 +206,50 @@ struct WorkoutsView: View {
     }
 }
 
+// MARK: - Plan progress
+
+/// "3 of 6 done" plus the next movement — the glanceable state of a planned
+/// session. Deliberately compact, because this is the shape that will translate
+/// to a watch face later.
+struct PlanProgressRow: View {
+    let session: WorkoutSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Plan")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(completed.count) of \(session.plannedExerciseNames.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+
+            ProgressView(
+                value: Double(completed.count),
+                total: Double(max(session.plannedExerciseNames.count, 1))
+            )
+            .tint(.cyan)
+
+            if let next = session.plannedExerciseNames.first(where: { !completed.contains($0) }) {
+                Text("Next: \(next)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                Text("Plan complete")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var completed: Set<String> {
+        Set(session.sets.compactMap { $0.exercise?.name })
+    }
+}
+
 // MARK: - Summary row
 
 struct SessionSummaryRow: View {
@@ -190,6 +293,7 @@ struct SessionDetailView: View {
 
     @Environment(\.modelContext) private var context
     @Query private var allSets: [SetEntry]
+    @Query(sort: \Exercise.name) private var library: [Exercise]
 
     @State private var editingEntry: SetEntry?
     @State private var pickingExercise = false
@@ -223,6 +327,32 @@ struct SessionDetailView: View {
                 // to be possible — otherwise the set lands on the wrong day and
                 // quietly distorts every load calculation downstream.
                 Text("Tap the date to correct it if you logged this session late.")
+            }
+
+            if !session.plannedExerciseNames.isEmpty {
+                Section {
+                    ForEach(session.plannedExerciseNames, id: \.self) { name in
+                        Button {
+                            loggingFor = library.first { $0.name == name }
+                        } label: {
+                            HStack {
+                                Image(systemName: isDone(name) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isDone(name) ? .green : .secondary)
+                                Text(name)
+                                    .foregroundStyle(isDone(name) ? .secondary : .primary)
+                                    .strikethrough(isDone(name), color: .secondary)
+                                Spacer()
+                            }
+                        }
+                    }
+                    .onDelete { offsets in
+                        session.plannedExerciseNames.remove(atOffsets: offsets)
+                    }
+                } header: {
+                    Text("Plan")
+                } footer: {
+                    Text("Tap any movement to log it. Swipe to drop it from the plan.")
+                }
             }
 
             ForEach(exerciseGroups, id: \.exerciseName) { group in
@@ -278,6 +408,13 @@ struct SessionDetailView: View {
         .sheet(item: $loggingFor) { exercise in
             LogSetsView(exercise: exercise, session: session, history: allSets)
         }
+        .safeAreaInset(edge: .bottom) {
+            RestTimerBar()
+        }
+    }
+
+    private func isDone(_ name: String) -> Bool {
+        session.sets.contains { $0.exercise?.name == name }
     }
 
     private struct ExerciseGroup {

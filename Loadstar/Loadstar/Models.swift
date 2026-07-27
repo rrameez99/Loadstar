@@ -191,6 +191,11 @@ final class Exercise {
     /// barbell, ~7.5 kg for an EZ-curl bar, 0 for machines and dumbbells.
     var defaultBarWeightKg: Double = 0
 
+    /// Rest between sets, in seconds. Per-exercise because the right answer varies
+    /// enormously: heavy compounds need 2–3 minutes for the nervous system to
+    /// recover, isolation work is fine at 60–90 seconds.
+    var restSeconds: Int = 120
+
     var notes: String = ""
     var createdAt: Date = Date()
 
@@ -213,6 +218,7 @@ final class Exercise {
         defaultUnit: WeightUnit = .kilograms,
         defaultIsPerSide: Bool = false,
         defaultBarWeightKg: Double? = nil,
+        restSeconds: Int? = nil,
         notes: String = ""
     ) {
         self.name = name
@@ -224,6 +230,9 @@ final class Exercise {
         self.defaultUnit = defaultUnit
         self.defaultIsPerSide = defaultIsPerSide
         self.defaultBarWeightKg = defaultBarWeightKg ?? equipment.defaultBarWeightKg
+        // Derived from the rep range when unspecified: low reps means heavy work
+        // means longer rest.
+        self.restSeconds = restSeconds ?? (targetRepMax <= 8 ? 180 : targetRepMax <= 12 ? 120 : 75)
         // `??` is the nil-coalescing operator: use the left side unless it's nil,
         // in which case fall back to the right. Lets the caller override the
         // equipment-derived default without having to know it.
@@ -254,6 +263,14 @@ final class WorkoutSession {
     /// HKWorkout's UUID so heart-rate data can be joined to the logged sets. Optional
     /// because plenty of lifting sessions never get recorded on the watch.
     var linkedHealthKitWorkoutID: UUID?
+
+    /// Exercises intended for this session, in order — the plan, as opposed to
+    /// `sets`, which is what actually happened.
+    ///
+    /// Stored as names rather than relationships deliberately: a plan is a list of
+    /// intentions, and it shouldn't break or cascade if an exercise is later
+    /// renamed or deleted from the library.
+    var plannedExerciseNames: [String] = []
 
     /// `.cascade` here is deliberate and is the opposite choice from Exercise:
     /// deleting a session *should* delete its sets, because a set has no meaning
