@@ -5,7 +5,7 @@ actually doing to you.
 
 I built it because I own an Apple Watch Ultra that collects basically everything a
 Whoop band does, and the Health app presents all of it as a pile of disconnected
-charts. Meanwhile my lifting log lived in Apple Notes as lines like `Squats 22.5kgs
+charts. Meanwhile my lifting log lived in Apple Notes as lines like `Squats 70kgs
 / 6 / 6 / 6`, typed by hand, with no connection to any of that data.
 
 There are apps that fill part of this gap. Athlytic, Bevel, Training Today. I used
