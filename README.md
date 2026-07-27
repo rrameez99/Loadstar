@@ -117,11 +117,11 @@ them up as science would be worse than admitting it.
 ## Some decisions that turned out to matter
 
 **Weights are stored with their unit.** My old log switched from pounds to kilograms
-partway through, because I spent a summer training in Copenhagen. Without units on
-each set, my squat looked like it fell from 42.5 to 22.5 when it had actually gone up
-17%. Every calculation normalises to kilograms; every display shows the number as I
-originally wrote it, because a prescription that doesn't match the plate in front of
-you is useless.
+partway through, because I spent a summer training in Copenhagen. My squat went from
+130 lb to 65 kg over that period. Store those as bare numbers and it looks like my
+legs fell off; convert properly and it's a 10% gain. Every calculation normalises to
+kilograms; every display shows the number as I originally wrote it, because a
+prescription that doesn't match the plate in front of you is useless.
 
 **Sets know whether they're per side, and what the bar weighs.** `25 kg` on a squat
 means 25 per side plus a 20 kg bar, so 70 kg total. Guessing wrong here is a ~3×

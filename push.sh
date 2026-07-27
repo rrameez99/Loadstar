@@ -47,6 +47,17 @@ git commit -m "$MESSAGE"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 if git rev-parse --abbrev-ref "@{upstream}" >/dev/null 2>&1; then
+  # Pick up anything committed elsewhere first — editing a file directly on
+  # github.com leaves this machine behind, and the push would just be rejected.
+  # Rebase rather than merge so the history stays a straight line instead of
+  # collecting "Merge branch 'main'" commits nobody wants to read.
+  echo "Checking for remote changes..."
+  if ! git pull --rebase --autostash; then
+    echo
+    echo "Pull failed — probably a conflict. Resolve it, then run:"
+    echo "  git rebase --continue && git push"
+    exit 1
+  fi
   git push
 else
   git push -u origin "$BRANCH"
