@@ -58,12 +58,18 @@ struct TodayView: View {
             }
             .sheet(isPresented: $showingProfile) { ProfileView() }
             .sheet(item: $detail) { which in
-                ScoreDetailView(
-                    kind: which,
-                    recovery: recovery,
-                    strain: strain,
-                    day: today
-                )
+                // Sleep gets its own screen — the hypnogram needs room, and it's
+                // the metric with the most structure worth showing.
+                if which == .sleep, let today {
+                    SleepDetailView(day: today, sleepScore: recovery?.sleepScore)
+                } else {
+                    ScoreDetailView(
+                        kind: which,
+                        recovery: recovery,
+                        strain: strain,
+                        day: today
+                    )
+                }
             }
         }
     }

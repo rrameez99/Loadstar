@@ -425,6 +425,73 @@ final class SetEntry {
     }
 }
 
+// MARK: - Sleep staging
+
+enum SleepStage: String, Codable, CaseIterable, Identifiable {
+    case awake
+    case rem
+    case core
+    case deep
+    case unspecified
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .awake:       return "Awake"
+        case .rem:         return "REM"
+        case .core:        return "Light"
+        case .deep:        return "Deep"
+        case .unspecified: return "Asleep"
+        }
+    }
+
+    /// Draw order, top to bottom — the conventional hypnogram layout puts wakefulness
+    /// at the top and descends through progressively deeper stages.
+    var depthRank: Int {
+        switch self {
+        case .awake:       return 0
+        case .rem:         return 1
+        case .core:        return 2
+        case .deep:        return 3
+        case .unspecified: return 2
+        }
+    }
+
+    /// Typical share of total sleep, as a reference band rather than a target.
+    /// Individual variation is wide and a single night says almost nothing —
+    /// these exist so a number has context, not so it can be chased.
+    var typicalRange: ClosedRange<Double>? {
+        switch self {
+        case .deep:  return 0.13...0.23
+        case .rem:   return 0.20...0.25
+        case .core:  return 0.45...0.55
+        case .awake: return 0.00...0.10
+        case .unspecified: return nil
+        }
+    }
+
+    var countsAsAsleep: Bool {
+        self != .awake
+    }
+}
+
+/// One contiguous stretch of a single sleep stage.
+///
+/// Stored as a Codable value on DailyMetrics rather than as its own @Model: these
+/// are never queried independently, only ever read as a set belonging to one
+/// night, so a relationship would add join cost for no benefit.
+struct SleepStageSegment: Codable, Hashable, Identifiable {
+    var id: UUID = UUID()
+    var stage: SleepStage
+    var start: Date
+    var end: Date
+
+    var durationMinutes: Double {
+        end.timeIntervalSince(start) / 60
+    }
+}
+
 // MARK: - DailyMetrics
 //
 // One row per day of HealthKit-derived biometrics plus the scores computed from
@@ -460,6 +527,16 @@ final class DailyMetrics {
     var remSleepMinutes: Double?
     var coreSleepMinutes: Double?
     var awakeMinutes: Double?
+
+    /// The night's stage-by-stage timeline, for the hypnogram. Totals alone can't
+    /// show *when* deep sleep happened, which is most of what makes the chart
+    /// worth looking at — deep sleep front-loads in a normal night, and a night
+    /// where it doesn't looks very different at the same total.
+    var sleepSegments: [SleepStageSegment] = []
+
+    /// When the night began and ended, for labelling the timeline axis.
+    var sleepStart: Date?
+    var sleepEnd: Date?
 
     // --- Computed scores, filled in by the engines ---
     var recoveryScore: Double?

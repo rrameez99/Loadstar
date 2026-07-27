@@ -36,6 +36,10 @@ struct DailyMetricsSnapshot {
     var remSleepMinutes: Double?
     var coreSleepMinutes: Double?
     var awakeMinutes: Double?
+
+    var sleepSegments: [SleepStageSegment] = []
+    var sleepStart: Date?
+    var sleepEnd: Date?
 }
 
 // MARK: - Errors
@@ -241,6 +245,9 @@ final class HealthKitService {
             snapshot.remSleepMinutes = sleep.remMinutes
             snapshot.coreSleepMinutes = sleep.coreMinutes
             snapshot.awakeMinutes = sleep.awakeMinutes
+            snapshot.sleepSegments = sleep.segments
+            snapshot.sleepStart = sleep.start
+            snapshot.sleepEnd = sleep.end
         }
 
         return snapshot
@@ -316,6 +323,9 @@ final class HealthKitService {
         var remMinutes: Double
         var coreMinutes: Double
         var awakeMinutes: Double
+        var segments: [SleepStageSegment]
+        var start: Date?
+        var end: Date?
     }
 
     /// Sums sleep stages for the night *ending* on the given morning.
@@ -342,28 +352,35 @@ final class HealthKitService {
         guard !samples.isEmpty else { return nil }
 
         var summary = SleepSummary(
-            asleepMinutes: 0, deepMinutes: 0, remMinutes: 0, coreMinutes: 0, awakeMinutes: 0
+            asleepMinutes: 0, deepMinutes: 0, remMinutes: 0, coreMinutes: 0, awakeMinutes: 0,
+            segments: [], start: nil, end: nil
         )
 
         for sample in samples {
             let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
+            var stage: SleepStage?
 
             switch HKCategoryValueSleepAnalysis(rawValue: sample.value) {
             case .asleepDeep:
                 summary.deepMinutes += minutes
                 summary.asleepMinutes += minutes
+                stage = .deep
             case .asleepREM:
                 summary.remMinutes += minutes
                 summary.asleepMinutes += minutes
+                stage = .rem
             case .asleepCore:
                 summary.coreMinutes += minutes
                 summary.asleepMinutes += minutes
+                stage = .core
             case .asleepUnspecified:
                 // Older watches and third-party trackers report undifferentiated
                 // sleep. It counts toward duration but not toward any stage.
                 summary.asleepMinutes += minutes
+                stage = .unspecified
             case .awake:
                 summary.awakeMinutes += minutes
+                stage = .awake
             case .inBed, .none:
                 // "In bed" overlaps the stage samples, so counting it would
                 // double-count the whole night.
@@ -371,7 +388,17 @@ final class HealthKitService {
             @unknown default:
                 break
             }
+
+            if let stage {
+                summary.segments.append(
+                    SleepStageSegment(stage: stage, start: sample.startDate, end: sample.endDate)
+                )
+            }
         }
+
+        summary.segments.sort { $0.start < $1.start }
+        summary.start = summary.segments.first?.start
+        summary.end = summary.segments.last?.end
 
         return summary
     }
@@ -512,6 +539,9 @@ final class HealthKitService {
             row.remSleepMinutes = snapshot.remSleepMinutes
             row.coreSleepMinutes = snapshot.coreSleepMinutes
             row.awakeMinutes = snapshot.awakeMinutes
+            row.sleepSegments = snapshot.sleepSegments
+            row.sleepStart = snapshot.sleepStart
+            row.sleepEnd = snapshot.sleepEnd
 
             // Cardiovascular load is computed here, at ingest, because it needs
             // per-workout heart-rate queries that would be far too slow to run
