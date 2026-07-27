@@ -92,11 +92,27 @@ struct RestTimerBar: View {
                 .stroke(tint.opacity(0.35), lineWidth: 1)
         )
         .padding(.horizontal)
+        .padding(.bottom, 6)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private var tint: Color {
         timer.remaining > 0 ? .cyan : .green
+    }
+}
+
+// MARK: - Attachment
+
+extension View {
+    /// Pins the rest countdown above this view's bottom safe area.
+    ///
+    /// Apply to a tab's *content*, not to the TabView — see the note in
+    /// ContentView. Also applied separately inside the logging sheet, since a
+    /// sheet covers the tab content entirely.
+    func withRestTimer() -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            RestTimerBar()
+        }
     }
 }
 

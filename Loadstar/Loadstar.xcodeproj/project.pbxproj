@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		51E1668930173D8B007070F6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51E1668830173D8B007070F6 /* WidgetKit.framework */; };
+		51E1668B30173D8B007070F6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51E1668A30173D8B007070F6 /* SwiftUI.framework */; };
+		51E1669830173D8C007070F6 /* RestTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51E1668630173D8B007070F6 /* RestTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		51E1664330166711007070F6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,17 +27,61 @@
 			remoteGlobalIDString = 51E1663230166710007070F6;
 			remoteInfo = Loadstar;
 		};
+		51E1669630173D8C007070F6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 51E1662B30166710007070F6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 51E1668530173D8B007070F6;
+			remoteInfo = RestTimerWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		51E1669D30173D8C007070F6 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				51E1669830173D8C007070F6 /* RestTimerWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		51E1663330166710007070F6 /* Loadstar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Loadstar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51E1664230166711007070F6 /* LoadstarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoadstarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51E1664C30166711007070F6 /* LoadstarUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoadstarUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51E1668630173D8B007070F6 /* RestTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RestTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		51E1668830173D8B007070F6 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		51E1668A30173D8B007070F6 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		51E1669930173D8C007070F6 /* Exceptions for "RestTimerWidget" folder in "RestTimerWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 51E1668530173D8B007070F6 /* RestTimerWidgetExtension */;
+		};
+		51E166A1301741C9007070F6 /* Exceptions for "Loadstar" folder in "RestTimerWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				RestTimerActivity.swift,
+			);
+			target = 51E1668530173D8B007070F6 /* RestTimerWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		51E1663530166710007070F6 /* Loadstar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				51E166A1301741C9007070F6 /* Exceptions for "Loadstar" folder in "RestTimerWidgetExtension" target */,
+			);
 			path = Loadstar;
 			sourceTree = "<group>";
 		};
@@ -43,6 +93,14 @@
 		51E1664F30166711007070F6 /* LoadstarUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LoadstarUITests;
+			sourceTree = "<group>";
+		};
+		51E1668C30173D8B007070F6 /* RestTimerWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				51E1669930173D8C007070F6 /* Exceptions for "RestTimerWidget" folder in "RestTimerWidgetExtension" target */,
+			);
+			path = RestTimerWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +127,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51E1668330173D8B007070F6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				51E1668B30173D8B007070F6 /* SwiftUI.framework in Frameworks */,
+				51E1668930173D8B007070F6 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +145,8 @@
 				51E1663530166710007070F6 /* Loadstar */,
 				51E1664530166711007070F6 /* LoadstarTests */,
 				51E1664F30166711007070F6 /* LoadstarUITests */,
+				51E1668C30173D8B007070F6 /* RestTimerWidget */,
+				51E1668730173D8B007070F6 /* Frameworks */,
 				51E1663430166710007070F6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +157,18 @@
 				51E1663330166710007070F6 /* Loadstar.app */,
 				51E1664230166711007070F6 /* LoadstarTests.xctest */,
 				51E1664C30166711007070F6 /* LoadstarUITests.xctest */,
+				51E1668630173D8B007070F6 /* RestTimerWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		51E1668730173D8B007070F6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				51E1668830173D8B007070F6 /* WidgetKit.framework */,
+				51E1668A30173D8B007070F6 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,10 +181,12 @@
 				51E1662F30166710007070F6 /* Sources */,
 				51E1663030166710007070F6 /* Frameworks */,
 				51E1663130166710007070F6 /* Resources */,
+				51E1669D30173D8C007070F6 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				51E1669730173D8C007070F6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				51E1663530166710007070F6 /* Loadstar */,
@@ -163,6 +244,28 @@
 			productReference = 51E1664C30166711007070F6 /* LoadstarUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		51E1668530173D8B007070F6 /* RestTimerWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51E1669A30173D8C007070F6 /* Build configuration list for PBXNativeTarget "RestTimerWidgetExtension" */;
+			buildPhases = (
+				51E1668230173D8B007070F6 /* Sources */,
+				51E1668330173D8B007070F6 /* Frameworks */,
+				51E1668430173D8B007070F6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				51E1668C30173D8B007070F6 /* RestTimerWidget */,
+			);
+			name = RestTimerWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = RestTimerWidgetExtension;
+			productReference = 51E1668630173D8B007070F6 /* RestTimerWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +287,9 @@
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 51E1663230166710007070F6;
 					};
+					51E1668530173D8B007070F6 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 				};
 			};
 			buildConfigurationList = 51E1662E30166710007070F6 /* Build configuration list for PBXProject "Loadstar" */;
@@ -203,6 +309,7 @@
 				51E1663230166710007070F6 /* Loadstar */,
 				51E1664130166711007070F6 /* LoadstarTests */,
 				51E1664B30166711007070F6 /* LoadstarUITests */,
+				51E1668530173D8B007070F6 /* RestTimerWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +330,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		51E1664A30166711007070F6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		51E1668430173D8B007070F6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +367,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51E1668230173D8B007070F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +386,11 @@
 			isa = PBXTargetDependency;
 			target = 51E1663230166710007070F6 /* Loadstar */;
 			targetProxy = 51E1664D30166711007070F6 /* PBXContainerItemProxy */;
+		};
+		51E1669730173D8C007070F6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 51E1668530173D8B007070F6 /* RestTimerWidgetExtension */;
+			targetProxy = 51E1669630173D8C007070F6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -402,6 +528,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Loadstar reads your Apple Watch heart rate, HRV, and sleep data to calculate recovery and training load.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -436,6 +563,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "Loadstar reads your Apple Watch heart rate, HRV, and sleep data to calculate recovery and training load.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -542,6 +670,66 @@
 			};
 			name = Release;
 		};
+		51E1669B30173D8C007070F6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N73U84897W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RestTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RestTimerWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rameez.Loadstar.RestTimerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		51E1669C30173D8C007070F6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N73U84897W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RestTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RestTimerWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rameez.Loadstar.RestTimerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -577,6 +765,15 @@
 			buildConfigurations = (
 				51E1665D30166711007070F6 /* Debug */,
 				51E1665E30166711007070F6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		51E1669A30173D8C007070F6 /* Build configuration list for PBXNativeTarget "RestTimerWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51E1669B30173D8C007070F6 /* Debug */,
+				51E1669C30173D8C007070F6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

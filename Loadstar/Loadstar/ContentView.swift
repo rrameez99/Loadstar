@@ -14,24 +14,27 @@ struct ContentView: View {
     @Environment(\.modelContext) private var context
 
     var body: some View {
+        // The rest timer inset goes on each tab's content, never on the TabView.
+        // Applied to the TabView it inserts into the TabView's own bounds, which
+        // is where the tab bar already sits — so the bar lands on top of it.
+        // Applied to the content, the safe area already excludes the tab bar and
+        // the timer settles neatly above it.
         TabView {
             TodayView()
+                .withRestTimer()
                 .tabItem { Label("Today", systemImage: "gauge.with.dots.needle.33percent") }
 
             WorkoutsView()
+                .withRestTimer()
                 .tabItem { Label("Workouts", systemImage: "figure.strengthtraining.traditional") }
 
             TrendsView()
+                .withRestTimer()
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }
 
             ExerciseLibraryView()
+                .withRestTimer()
                 .tabItem { Label("Library", systemImage: "list.bullet") }
-        }
-        // Above the tab bar, so the countdown survives leaving the log screen and
-        // follows you across tabs. It's also duplicated inside the logging sheet,
-        // because a sheet covers this entirely.
-        .safeAreaInset(edge: .bottom) {
-            RestTimerBar()
         }
         // Refresh on cold launch...
         .task {

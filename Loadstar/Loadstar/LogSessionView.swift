@@ -247,11 +247,10 @@ struct LogSetsView: View {
                 }
             }
             .onAppear(perform: prefill)
-            .safeAreaInset(edge: .bottom) {
-                // Pinned above the keyboard and the form, so the countdown stays
-                // visible while you're entering the next set.
-                RestTimerBar()
-            }
+            // Pinned above the form, so the countdown stays visible while you're
+            // entering the next set. The sheet covers the tab bar, so the tab-level
+            // one isn't visible here.
+            .withRestTimer()
         }
     }
 
