@@ -77,7 +77,7 @@ struct WorkoutsView: View {
                 // start is almost always "the same thing I did last time."
                 ForEach(repeatCandidates, id: \.persistentModelID) { candidate in
                     Button {
-                        repeat(candidate)
+                        copyPlan(from: candidate)
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Label("Repeat \(candidate.date.formatted(.dateTime.weekday(.wide)))", systemImage: "arrow.counterclockwise")
@@ -118,7 +118,7 @@ struct WorkoutsView: View {
     /// Copying sets would log work you haven't done, which is the one thing a
     /// training log must never do. The progression engine fills in the numbers
     /// when you get to each movement.
-    private func `repeat`(_ source: WorkoutSession) {
+    private func copyPlan(from source: WorkoutSession) {
         let session = sessionForToday()
 
         var names: [String] = []
@@ -407,9 +407,6 @@ struct SessionDetailView: View {
         }
         .sheet(item: $loggingFor) { exercise in
             LogSetsView(exercise: exercise, session: session, history: allSets)
-        }
-        .safeAreaInset(edge: .bottom) {
-            RestTimerBar()
         }
     }
 

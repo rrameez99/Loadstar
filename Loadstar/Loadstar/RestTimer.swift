@@ -27,6 +27,10 @@ import UserNotifications
 import UIKit
 #endif
 
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
+
 @Observable
 final class RestTimer {
 
@@ -75,6 +79,7 @@ final class RestTimer {
         self.endDate = Date().addingTimeInterval(seconds)
         self.exerciseName = exerciseName
         scheduleNotification(in: seconds, exerciseName: exerciseName)
+        startOrUpdateActivity()
     }
 
     func stop() {
@@ -82,6 +87,7 @@ final class RestTimer {
         totalDuration = 0
         exerciseName = nil
         cancelNotification()
+        endActivity()
     }
 
     /// Extends or trims the running timer — the "+30s" button, since the set you
@@ -98,7 +104,61 @@ final class RestTimer {
         self.endDate = newEnd
         self.totalDuration = max(totalDuration + seconds, 1)
         scheduleNotification(in: newEnd.timeIntervalSinceNow, exerciseName: exerciseName)
+        startOrUpdateActivity()
     }
+
+    // MARK: Live Activity
+
+    #if canImport(ActivityKit)
+    private var activity: Activity<RestTimerAttributes>?
+
+    private func startOrUpdateActivity() {
+        guard let endDate else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+
+        let state = RestTimerAttributes.ContentState(
+            endDate: endDate,
+            exerciseName: exerciseName,
+            totalDuration: totalDuration
+        )
+
+        if let activity {
+            // Updating an existing activity rather than starting a second one —
+            // "+30s" should move the pill already on screen, not stack a new one.
+            Task {
+                await activity.update(
+                    ActivityContent(state: state, staleDate: endDate.addingTimeInterval(60))
+                )
+            }
+            return
+        }
+
+        do {
+            activity = try Activity.request(
+                attributes: RestTimerAttributes(startedAt: Date()),
+                content: ActivityContent(state: state, staleDate: endDate.addingTimeInterval(60)),
+                pushType: nil
+            )
+        } catch {
+            // Live Activities can be disabled per-app in Settings, and there's a
+            // system limit on concurrent activities. Neither is worth interrupting
+            // a workout over — the in-app bar and the notification still work.
+            activity = nil
+        }
+    }
+
+    private func endActivity() {
+        guard let activity else { return }
+        let finished = activity
+        self.activity = nil
+        Task {
+            await finished.end(nil, dismissalPolicy: .immediate)
+        }
+    }
+    #else
+    private func startOrUpdateActivity() {}
+    private func endActivity() {}
+    #endif
 
     // MARK: Notifications
 

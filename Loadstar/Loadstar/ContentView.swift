@@ -27,6 +27,12 @@ struct ContentView: View {
             ExerciseLibraryView()
                 .tabItem { Label("Library", systemImage: "list.bullet") }
         }
+        // Above the tab bar, so the countdown survives leaving the log screen and
+        // follows you across tabs. It's also duplicated inside the logging sheet,
+        // because a sheet covers this entirely.
+        .safeAreaInset(edge: .bottom) {
+            RestTimerBar()
+        }
         // Refresh on cold launch...
         .task {
             await HealthKitService.shared.syncRecentIfNeeded(into: context)

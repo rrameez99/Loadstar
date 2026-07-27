@@ -152,10 +152,7 @@ struct LogSetsView: View {
                     HStack {
                         Text("Weight")
                         Spacer()
-                        TextField("0", value: $weight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 70)
+                        DecimalField(placeholder: "0", value: $weight)
 
                         // Segmented rather than a wheel: switching units is rare but
                         // has to be obvious, because a wrong unit silently corrupts
@@ -224,10 +221,7 @@ struct LogSetsView: View {
                         HStack {
                             Text("Bar weight")
                             Spacer()
-                            TextField("0", value: $barWeightKg, format: .number)
-                                .keyboardType(.decimalPad)
-                                .multilineTextAlignment(.trailing)
-                                .frame(width: 70)
+                            DecimalField(placeholder: "0", value: $barWeightKg)
                             Text("kg").foregroundStyle(.secondary)
                         }
                     } label: {
@@ -266,9 +260,17 @@ struct LogSetsView: View {
         let recommendation = ProgressionEngine.recommendation(for: exercise, history: history)
         weight = recommendation.targetWeight
         reps = recommendation.targetReps
-        unit = recommendation.unit
         isPerSide = recommendation.isPerSide
         barWeightKg = exercise.defaultBarWeightKg
+
+        // With history, inherit the unit from the last session — the number should
+        // match the plate you're looking at. With no history there's nothing to
+        // inherit, so fall back to the profile preference.
+        if case .firstTime = recommendation.rationale {
+            unit = PreferredUnitDefaults.current
+        } else {
+            unit = recommendation.unit
+        }
     }
 
     private func logSet() {

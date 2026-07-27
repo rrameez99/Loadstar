@@ -27,6 +27,19 @@ enum ProfileKey {
     static let maxHR = "profile.maxHR"
     static let bodyMassKg = "profile.bodyMassKg"
     static let name = "profile.name"
+    static let preferredUnit = "profile.preferredUnit"
+}
+
+/// The unit new sets default to, when there's no prior session to inherit from.
+///
+/// Deliberately a preference rather than a conversion: changing this affects what
+/// gets *entered* next, and never rewrites anything already logged. Your history
+/// stays exactly as you recorded it, in whichever gym you recorded it.
+enum PreferredUnitDefaults {
+    static var current: WeightUnit {
+        let raw = UserDefaults.standard.string(forKey: ProfileKey.preferredUnit)
+        return WeightUnit(rawValue: raw ?? "") ?? .kilograms
+    }
 }
 
 enum BiologicalSexOption: String, CaseIterable, Identifiable {
@@ -67,6 +80,7 @@ struct ProfileView: View {
     @AppStorage(ProfileKey.restingHR) private var restingHR = 0
     @AppStorage(ProfileKey.maxHR) private var maxHR = 0
     @AppStorage(ProfileKey.bodyMassKg) private var bodyMassKg = 0.0
+    @AppStorage(ProfileKey.preferredUnit) private var preferredUnitRaw = WeightUnit.kilograms.rawValue
 
     @State private var health = HealthKitService.shared
     @State private var showingAuthError: String?
@@ -117,6 +131,19 @@ struct ProfileView: View {
                             .frame(width: 70)
                         Text("kg").foregroundStyle(.secondary)
                     }
+                }
+
+                Section {
+                    Picker("Log weights in", selection: $preferredUnitRaw) {
+                        ForEach(WeightUnit.allCases) { unit in
+                            Text(unit == .pounds ? "Pounds (lb)" : "Kilograms (kg)")
+                                .tag(unit.rawValue)
+                        }
+                    }
+                } header: {
+                    Text("Units")
+                } footer: {
+                    Text("Sets you log from now on default to this. Nothing already recorded changes — a session logged in kg stays in kg, and all comparisons are normalized behind the scenes regardless.")
                 }
 
                 Section {

@@ -17,18 +17,23 @@ struct RestTimerBar: View {
     @State private var hasPlayedCompletion = false
 
     var body: some View {
-        // Redraws once a second while visible; the displayed value is always
-        // derived from the stored end date, so a missed tick can't cause drift.
-        TimelineView(.periodic(from: .now, by: 1)) { _ in
+        // The conditional wraps the TimelineView rather than sitting inside it.
+        // Inside, SwiftUI re-evaluates the branch every second and the insertion
+        // transition re-fires, which is what made the bar visibly stutter.
+        Group {
             if timer.endDate != nil {
-                content
-                    .onChange(of: timer.remaining <= 0) { _, finished in
-                        guard finished, !hasPlayedCompletion else { return }
-                        hasPlayedCompletion = true
-                        timer.playCompletionFeedback()
-                    }
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    content
+                }
+                .onChange(of: timer.remaining <= 0) { _, finished in
+                    guard finished, !hasPlayedCompletion else { return }
+                    hasPlayedCompletion = true
+                    timer.playCompletionFeedback()
+                }
+                .onAppear { hasPlayedCompletion = false }
             }
         }
+        .animation(.snappy(duration: 0.25), value: timer.endDate)
     }
 
     private var content: some View {
