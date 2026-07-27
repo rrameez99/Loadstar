@@ -40,14 +40,23 @@ struct RecoveryComponent: Identifiable {
     var deviationDescription: String {
         let delta = value - baseline
         let sign = delta >= 0 ? "+" : ""
-        let good = higherIsBetter ? delta >= 0 : delta <= 0
-        let direction = good ? "better than" : "below"
-        _ = direction
         return "\(sign)\(String(format: "%.1f", delta)) \(unit) vs \(String(format: "%.1f", baseline)) baseline"
     }
 
+    /// `zScore` is stored already direction-corrected — for resting heart rate,
+    /// a drop below baseline is recorded as a *positive* z because it's good news.
+    /// So this is simply "is the corrected z positive." Applying `higherIsBetter`
+    /// again here double-flipped the sign and coloured every inverted metric
+    /// backwards.
     var isFavourable: Bool {
-        higherIsBetter ? zScore >= 0 : zScore <= 0
+        zScore >= 0
+    }
+
+    /// Plain-language direction of the raw value, which is what a reader expects
+    /// in a sentence: resting HR 13 bpm under baseline is "below," even though
+    /// that's favourable.
+    var rawDirection: String {
+        value >= baseline ? "above" : "below"
     }
 }
 

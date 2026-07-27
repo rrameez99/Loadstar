@@ -143,13 +143,16 @@ struct TodayView: View {
 
     /// Names the dominant driver rather than restating the band, so the sentence
     /// carries information the ring doesn't already show.
+    ///
+    /// Uses the raw direction ("below baseline") rather than a judgment word.
+    /// "Resting HR suppressed" is ambiguous for an inverted metric — a reader
+    /// can't tell whether that's the good news or the bad news.
     private func headline(for result: RecoveryResult) -> String {
         guard let driver = result.dominantDriver else {
             return "\(result.band.rawValue) recovery"
         }
 
-        let verb = driver.isFavourable ? "elevated" : "suppressed"
-        return "\(driver.name) \(verb) — \(result.band.rawValue.lowercased()) recovery"
+        return "\(driver.name) \(driver.rawDirection) baseline — \(result.band.rawValue.lowercased()) recovery"
     }
 
     // MARK: - Load card

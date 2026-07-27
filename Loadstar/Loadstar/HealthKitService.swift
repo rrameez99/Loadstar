@@ -166,14 +166,37 @@ final class HealthKitService {
 
         var snapshot = DailyMetricsSnapshot(date: dayStart)
 
-        // HRV is measured repeatedly overnight; the daily average is the figure
-        // that baselines are built from.
-        snapshot.hrvSDNN = await average(
+        // The overnight window — 6pm the previous evening to noon.
+        let night = sleepWindow(forMorning: dayStart)
+
+        // HRV and respiratory rate are taken from overnight samples only.
+        //
+        // Apple also records HRV opportunistically during the day, and those
+        // readings are wildly noisier — they move with posture, caffeine, stress,
+        // and whatever you were doing at that moment. Averaging them into the
+        // daily figure produced z-scores above +3, which is not a physiological
+        // signal, it's measurement noise. Overnight readings are taken under
+        // consistent conditions, which is the entire reason they're comparable
+        // night to night.
+        var hrv = await average(
             .heartRateVariabilitySDNN,
             unit: .secondUnit(with: .milli),
-            from: dayStart, to: dayEnd
+            from: night.start, to: night.end
         )
 
+        if hrv == nil {
+            // Watch wasn't worn overnight. A noisy daytime number beats none.
+            hrv = await average(
+                .heartRateVariabilitySDNN,
+                unit: .secondUnit(with: .milli),
+                from: dayStart, to: dayEnd
+            )
+        }
+
+        snapshot.hrvSDNN = hrv
+
+        // Resting HR is already a daily summary Apple computes itself, so the
+        // calendar day is the right window here.
         snapshot.restingHeartRate = await average(
             .restingHeartRate,
             unit: HKUnit.count().unitDivided(by: .minute()),
@@ -183,7 +206,7 @@ final class HealthKitService {
         snapshot.respiratoryRate = await average(
             .respiratoryRate,
             unit: HKUnit.count().unitDivided(by: .minute()),
-            from: dayStart, to: dayEnd
+            from: night.start, to: night.end
         )
 
         // Already a deviation from your own baseline, not an absolute temperature.
@@ -274,6 +297,19 @@ final class HealthKitService {
 
     // MARK: Sleep
 
+    /// The overnight window for a given morning: 6pm the previous evening through
+    /// noon. Sleep crosses midnight, so a naive same-calendar-day query would
+    /// split every night in two and report roughly half the real duration. Shared
+    /// by the sleep query and the overnight biometric queries so they can never
+    /// disagree about which night they're describing.
+    private func sleepWindow(forMorning morning: Date) -> (start: Date, end: Date) {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: morning)
+        let start = calendar.date(byAdding: .hour, value: -6, to: dayStart) ?? dayStart
+        let end = calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? dayStart
+        return (start, end)
+    }
+
     private struct SleepSummary {
         var asleepMinutes: Double
         var deepMinutes: Double
@@ -288,15 +324,8 @@ final class HealthKitService {
     /// midnight and a naive same-calendar-day query would split every night in two
     /// and report roughly half the real duration.
     private func fetchSleep(forNightEnding morning: Date) async -> SleepSummary? {
-        let calendar = Calendar.current
-        let dayStart = calendar.startOfDay(for: morning)
-
-        guard
-            let windowStart = calendar.date(byAdding: .hour, value: -6, to: dayStart),
-            let windowEnd = calendar.date(byAdding: .hour, value: 12, to: dayStart)
-        else { return nil }
-
-        let predicate = HKQuery.predicateForSamples(withStart: windowStart, end: windowEnd, options: [])
+        let window = sleepWindow(forMorning: morning)
+        let predicate = HKQuery.predicateForSamples(withStart: window.start, end: window.end, options: [])
 
         let samples: [HKCategorySample] = await withCheckedContinuation { continuation in
             let query = HKSampleQuery(
