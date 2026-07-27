@@ -67,12 +67,45 @@ final class HealthKitService {
     /// having data: HealthKit deliberately refuses to tell an app which read
     /// permissions were denied, so that an app can't infer anything from the
     /// absence of data. The only honest signal is whether queries return results.
-    var hasRequestedAuthorization = false
-    var lastSyncDate: Date?
+    var hasRequestedAuthorization: Bool {
+        get { UserDefaults.standard.bool(forKey: Self.authorizedKey) }
+        set { UserDefaults.standard.set(newValue, forKey: Self.authorizedKey) }
+    }
+
+    /// Persisted rather than in-memory so the throttle survives app launches —
+    /// otherwise every cold start would trigger a full re-sync.
+    var lastSyncDate: Date? {
+        get { UserDefaults.standard.object(forKey: Self.lastSyncKey) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Self.lastSyncKey) }
+    }
+
     var lastError: String?
     var isSyncing = false
 
+    private static let authorizedKey = "health.hasRequestedAuthorization"
+    private static let lastSyncKey = "health.lastSyncDate"
+
+    /// How stale data can get before a foreground refresh is worth doing.
+    private static let refreshInterval: TimeInterval = 15 * 60
+
     private init() {}
+
+    /// Called when the app comes to the foreground.
+    ///
+    /// Only the last few days, not the full 60: HealthKit backfills recent nights
+    /// but never rewrites last month, and a 60-day sweep issues hundreds of
+    /// queries — far too slow to sit in front of a launch.
+    @MainActor
+    func syncRecentIfNeeded(into context: ModelContext, force: Bool = false) async {
+        guard isHealthDataAvailable, hasRequestedAuthorization else { return }
+
+        if !force, let last = lastSyncDate,
+           Date().timeIntervalSince(last) < Self.refreshInterval {
+            return
+        }
+
+        await sync(days: 7, into: context)
+    }
 
     var isHealthDataAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
@@ -175,7 +208,11 @@ final class HealthKitService {
             lookbackDays: 30
         )
 
-        if let sleep = await fetchSleep(forNightEnding: dayEnd) {
+        // `dayStart`, not `dayEnd`: a day's sleep is the night that *ended* that
+        // morning, because that's the night the day's recovery depends on.
+        // Passing dayEnd looks for the night that begins that evening, which for
+        // today hasn't happened yet.
+        if let sleep = await fetchSleep(forNightEnding: dayStart) {
             snapshot.sleepDurationMinutes = sleep.asleepMinutes
             snapshot.deepSleepMinutes = sleep.deepMinutes
             snapshot.remSleepMinutes = sleep.remMinutes

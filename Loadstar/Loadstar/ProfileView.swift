@@ -222,6 +222,8 @@ struct ProfileView: View {
     private func connectHealth() async {
         do {
             try await health.requestAuthorization()
+            // Full window on an explicit tap — this is the one place a slow,
+            // thorough sync is worth it. Foreground refreshes only do 7 days.
             await health.sync(days: 60, into: context)
         } catch {
             health.lastError = error.localizedDescription

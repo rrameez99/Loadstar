@@ -211,6 +211,13 @@ enum StrainEngine {
         // baseline and would produce an alarming ratio from nothing.
         guard chronic.count >= 14 else { return nil }
 
+        // And it needs actual *training* in that window, not just calendar days.
+        // Sixty days of zero-load rows technically satisfies the count check but
+        // would report "0.00 — undertraining," which reads as a finding when it's
+        // really an absence of data.
+        let trainingDays = chronic.filter { $0.load > 0 }.count
+        guard trainingDays >= 5 else { return nil }
+
         let acuteMean = acute.map(\.load).reduce(0, +) / 7.0
         let chronicMean = chronic.map(\.load).reduce(0, +) / 28.0
 

@@ -186,6 +186,16 @@ struct TodayView: View {
                 }
             }
 
+            // Neither channel has anything and there's no ratio yet — say so
+            // plainly rather than leaving an empty card that looks broken.
+            if (strain?.cardiovascularLoad ?? 0) == 0,
+               (strain?.mechanicalLoad ?? 0) == 0,
+               acwr == nil {
+                Text("Nothing logged today, and no workout picked up from Apple Health. Log a session and this fills in.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
             if let ratio = acwr {
                 Divider()
                 let zone = StrainEngine.zone(for: ratio)
