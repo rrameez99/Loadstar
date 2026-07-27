@@ -555,6 +555,10 @@ final class DailyMetrics {
     var sleepStart: Date?
     var sleepEnd: Date?
 
+    /// Workouts the watch recorded that day, kept so the app can show what you
+    /// actually did rather than only the total load it produced.
+    var recordedWorkouts: [WorkoutSummary] = []
+
     // --- Computed scores, filled in by the engines ---
     var recoveryScore: Double?
     var cardiovascularLoad: Double?

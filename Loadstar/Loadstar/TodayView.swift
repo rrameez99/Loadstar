@@ -42,6 +42,19 @@ struct TodayView: View {
                         ringRow
                         insightCard
                         loadCard
+
+                        if let today, !today.recordedWorkouts.isEmpty {
+                            RecordedWorkoutsCard(
+                                workouts: today.recordedWorkouts,
+                                restingHR: effectiveRestingHR,
+                                maxHR: effectiveMaxHR,
+                                coefficient: BiologicalSexOption(rawValue: sexRaw)?.trimpCoefficient ?? 1.8
+                            )
+                        }
+
+                        if let vitals {
+                            VitalsCard(result: vitals, vo2Max: today?.vo2Max)
+                        }
                     }
                 }
                 .padding()
@@ -255,6 +268,21 @@ struct TodayView: View {
     private var recovery: RecoveryResult? {
         guard let today else { return nil }
         return RecoveryEngine.recovery(for: today, history: metrics)
+    }
+
+    private var vitals: VitalsResult? {
+        guard let today else { return nil }
+        return VitalsEngine.vitals(for: today, history: metrics)
+    }
+
+    /// Falls back to conventional values rather than producing confidently wrong
+    /// TRIMP figures from an unfilled profile.
+    private var effectiveRestingHR: Double {
+        restingHR > 30 ? Double(restingHR) : 60
+    }
+
+    private var effectiveMaxHR: Double {
+        Double(maxHR) > effectiveRestingHR ? Double(maxHR) : 190
     }
 
     private var strain: StrainResult? {

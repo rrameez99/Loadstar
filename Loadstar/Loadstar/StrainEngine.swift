@@ -57,11 +57,36 @@ struct StrainResult {
 }
 
 /// A workout as far as the load model cares: how long, and how hard.
-struct WorkoutSummary {
+///
+/// Codable so it can be persisted on DailyMetrics. Without that, the per-workout
+/// heart-rate queries would have to be re-run every time a view wanted to show
+/// what you actually did — dozens of HealthKit round-trips inside a view body.
+struct WorkoutSummary: Codable, Hashable, Identifiable {
+    var id: UUID = UUID()
     let start: Date
     let duration: TimeInterval
     let averageHeartRate: Double?
     let activityName: String
+
+    /// TRIMP for this bout alone, so a workout list can show what each one
+    /// contributed rather than only the day's total.
+    func trimp(restingHR: Double, maxHR: Double, coefficient: Double) -> Double {
+        guard let averageHeartRate else { return 0 }
+        return StrainEngine.trimp(
+            durationMinutes: duration / 60,
+            averageHR: averageHeartRate,
+            restingHR: restingHR,
+            maxHR: maxHR,
+            coefficient: coefficient
+        )
+    }
+
+    var durationText: String {
+        let minutes = Int(duration / 60)
+        return minutes >= 60
+            ? "\(minutes / 60)h \(minutes % 60)m"
+            : "\(minutes)m"
+    }
 }
 
 // MARK: - Engine

@@ -547,6 +547,7 @@ final class HealthKitService {
             // per-workout heart-rate queries that would be far too slow to run
             // inside a view body.
             let workouts = await fetchWorkouts(for: snapshot.date)
+            row.recordedWorkouts = workouts
             row.cardiovascularLoad = StrainEngine.cardiovascularLoad(
                 workouts: workouts,
                 restingHR: effectiveRestingHR,
