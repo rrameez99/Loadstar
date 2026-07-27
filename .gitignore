@@ -44,6 +44,12 @@ Secrets.plist
 *.env
 .env.local
 
+# --- Screenshots ---
+# The Lock Screen and Home Screen shots are photographic wallpapers, so they're
+# committed as JPEG. The PNG originals are 5-10x larger for no visible gain.
+screenshots/live-activity.png
+screenshots/dynamic-island.png
+
 # --- macOS ---
 .DS_Store
 .AppleDouble

@@ -23,6 +23,17 @@ heart rate, tough.
 So Loadstar counts mechanical work alongside cardiovascular work, and every score in
 the app expands into the arithmetic behind it.
 
+<p align="center">
+  <img src="screenshots/today.png" width="24%" alt="Today dashboard with sleep, recovery and strain rings">
+  <img src="screenshots/recovery.png" width="24%" alt="Recovery score broken down into its weighted components">
+  <img src="screenshots/sleep.png" width="24%" alt="Sleep hypnogram showing stages across the night">
+  <img src="screenshots/live-activity.jpg" width="24%" alt="Rest timer running as a Live Activity on the Lock Screen">
+</p>
+
+<p align="center">
+  <em>The dashboard · the same recovery score opened up · the night, stage by stage · rest timer on the Lock Screen</em>
+</p>
+
 ---
 
 ## What it does right now
