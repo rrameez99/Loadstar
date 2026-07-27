@@ -136,7 +136,7 @@ struct LogSetsView: View {
         NavigationStack {
             Form {
                 Section("Recommended") {
-                    let recommendation = ProgressionEngine.recommendation(for: exercise, history: history)
+                    let recommendation = ProgressionEngine.recommendation(for: exercise, history: history, before: session.date)
                     VStack(alignment: .leading, spacing: 4) {
                         if recommendation.targetWeight > 0 {
                             Text("\(recommendation.setCount) × \(recommendation.targetReps) @ \(recommendation.displayWeight)")
@@ -256,7 +256,7 @@ struct LogSetsView: View {
 
     /// Seeds the fields with what the engine expects, so a normal set is one tap.
     private func prefill() {
-        let recommendation = ProgressionEngine.recommendation(for: exercise, history: history)
+        let recommendation = ProgressionEngine.recommendation(for: exercise, history: history, before: session.date)
         weight = recommendation.targetWeight
         reps = recommendation.targetReps
         isPerSide = recommendation.isPerSide

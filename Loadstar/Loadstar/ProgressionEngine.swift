@@ -106,12 +106,15 @@ enum ProgressionEngine {
     /// - Parameters:
     ///   - exercise: The movement being programmed.
     ///   - history: All sets ever logged for it. Order doesn't matter; this sorts.
+    ///   - before: the session currently being logged, excluded from its own
+    ///     comparison so every set in it gets the same target.
     static func recommendation(
         for exercise: Exercise,
-        history: [SetEntry]
+        history: [SetEntry],
+        before: Date? = nil
     ) -> ProgressionRecommendation {
 
-        guard let last = lastSession(for: exercise, history: history) else {
+        guard let last = lastSession(for: exercise, history: history, before: before) else {
             return ProgressionRecommendation(
                 exercise: exercise,
                 targetWeight: 0,
@@ -180,13 +183,32 @@ enum ProgressionEngine {
     // MARK: History
 
     /// The most recent session in which this exercise was performed.
-    static func lastSession(for exercise: Exercise, history: [SetEntry]) -> ExerciseSnapshot? {
-        let relevant = history.filter { $0.exercise?.name == exercise.name && !$0.isWarmup }
+    ///
+    /// - Parameter before: excludes this day and everything after it.
+    ///
+    ///   This parameter is load-bearing. Without it, logging set 1 of today's
+    ///   session makes *today* the most recent session, so set 2 gets told to
+    ///   beat set 1 and set 3 to beat set 2. That's an ascending ramp inside one
+    ///   workout, not double progression. Progression compares sessions to each
+    ///   other, so the session being logged has to be excluded from its own
+    ///   comparison.
+    static func lastSession(
+        for exercise: Exercise,
+        history: [SetEntry],
+        before: Date? = nil
+    ) -> ExerciseSnapshot? {
+        let calendar = Calendar.current
+        var relevant = history.filter { $0.exercise?.name == exercise.name && !$0.isWarmup }
+
+        if let before {
+            let cutoff = calendar.startOfDay(for: before)
+            relevant = relevant.filter { calendar.startOfDay(for: $0.timestamp) < cutoff }
+        }
+
         guard !relevant.isEmpty else { return nil }
 
         // Group by calendar day rather than by session object, so sets logged across
         // a split session still read as one workout.
-        let calendar = Calendar.current
         let byDay = Dictionary(grouping: relevant) { calendar.startOfDay(for: $0.timestamp) }
 
         guard let mostRecentDay = byDay.keys.max(),

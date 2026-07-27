@@ -108,7 +108,10 @@ struct ExerciseDetailView: View {
             Section("Next session") {
                 let recommendation = ProgressionEngine.recommendation(
                     for: exercise,
-                    history: allSets
+                    history: allSets,
+                    // "Next session" means the next one after today, so today's
+                    // work is a comparison target rather than a thing to beat.
+                    before: Date()
                 )
 
                 VStack(alignment: .leading, spacing: 6) {
